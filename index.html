@@ -7,28 +7,38 @@
     <script>
         const apiBaseUrl = "https://mf5vuxlffg.execute-api.ap-southeast-2.amazonaws.com"; // Replace with your API Gateway URL
 
-        async function startServer() {
-            await sendRequest("/start", "POST");
-        }
+        async function checkEC2Status() {
+            try {
+                const response = await fetch(`${apiBaseUrl}/status`, { method: "GET" });
+                const result = await response.json();
+                const ec2Status = result.state.toLowerCase();
 
-        async function stopServer() {
-            await sendRequest("/stop", "POST");
-        }
+                document.getElementById("ec2Status").innerText = `EC2 Status: ${ec2Status.toUpperCase()}`;
 
-        async function restartServer() {
-            await sendRequest("/restart", "POST");
-        }
-
-        async function sendMinecraftCommand() {
-            const command = document.getElementById("commandInput").value;
-            if (!command) {
-                alert("Please enter a Minecraft command.");
-                return;
+                // Enable/Disable buttons based on EC2 state
+                if (ec2Status === "stopped") {
+                    document.getElementById("startBtn").disabled = false;
+                    document.getElementById("stopBtn").disabled = true;
+                    document.getElementById("startMcBtn").disabled = true;
+                } else if (ec2Status === "running") {
+                    document.getElementById("startBtn").disabled = true;
+                    document.getElementById("stopBtn").disabled = false;
+                    document.getElementById("startMcBtn").disabled = false;
+                } else {
+                    document.getElementById("startBtn").disabled = true;
+                    document.getElementById("stopBtn").disabled = true;
+                    document.getElementById("startMcBtn").disabled = true;
+                }
+            } catch (error) {
+                console.error("Error fetching EC2 status:", error);
+                document.getElementById("ec2Status").innerText = "EC2 Status: Unknown";
             }
-            await sendRequest(`/command?command=${encodeURIComponent(command)}`, "POST");
         }
 
-        async function sendRequest(endpoint, method) {
+        async function sendRequest(endpoint, method, buttonId) {
+            const button = document.getElementById(buttonId);
+            button.disabled = true; // Disable button to prevent multiple clicks
+
             try {
                 const response = await fetch(`${apiBaseUrl}${endpoint}`, {
                     method: method,
@@ -37,27 +47,59 @@
 
                 const result = await response.json();
                 alert(result.body || "Operation successful");
+
+                setTimeout(checkEC2Status, 3000); // Refresh EC2 status after action
             } catch (error) {
                 console.error("Error:", error);
                 alert("Error processing request.");
+            } finally {
+                setTimeout(() => {
+                    button.disabled = false; // Re-enable button after delay
+                }, 5000);
             }
         }
+
+        async function startServer() {
+            await sendRequest("/start", "POST", "startBtn");
+        }
+
+        async function stopServer() {
+            await sendRequest("/stop", "POST", "stopBtn");
+        }
+
+        async function startMinecraftServer() {
+            await sendRequest("/restart", "POST", "startMcBtn"); // Uses restart to start MC server
+        }
+
+        async function sendMinecraftCommand() {
+            const command = document.getElementById("commandInput").value;
+            if (!command) {
+                alert("Please enter a Minecraft command.");
+                return;
+            }
+            await sendRequest(`/command?command=${encodeURIComponent(command)}`, "POST", "sendCmdBtn");
+        }
+
+        window.onload = checkEC2Status; // Load EC2 status on page load
     </script>
 </head>
 
 <body>
     <div class="container mt-5">
         <h1 class="text-center">Minecraft Server Control</h1>
+        <h3 class="text-center" id="ec2Status">EC2 Status: Checking...</h3>
+
         <div class="d-grid gap-3 mt-4">
-            <button class="btn btn-success" onclick="startServer()">Start Server</button>
-            <button class="btn btn-danger" onclick="stopServer()">Stop Server</button>
-            <button class="btn btn-warning" onclick="restartServer()">Restart Server</button>
+            <button id="startBtn" class="btn btn-success" onclick="startServer()" disabled>Start EC2 Server</button>
+            <button id="stopBtn" class="btn btn-danger" onclick="stopServer()" disabled>Stop EC2 Server</button>
+            <button id="startMcBtn" class="btn btn-warning" onclick="startMinecraftServer()" disabled>Start Minecraft
+                Server</button>
         </div>
 
         <div class="mt-4">
             <label for="commandInput" class="form-label">Minecraft Command:</label>
             <input type="text" id="commandInput" class="form-control" placeholder="e.g. say Hello!">
-            <button class="btn btn-primary mt-3" onclick="sendMinecraftCommand()">Send Command</button>
+            <button id="sendCmdBtn" class="btn btn-primary mt-3" onclick="sendMinecraftCommand()">Send Command</button>
         </div>
     </div>
 </body>
