@@ -138,17 +138,6 @@
             document.getElementById("stopForgeBtn").disabled = isDisabled;
             document.getElementById("startVanillaBtn").disabled = isDisabled;
             document.getElementById("stopVanillaBtn").disabled = isDisabled;
-            document.getElementById("sendCmdBtn").disabled = isDisabled;
-        }
-
-        async function sendMinecraftCommand() {
-            const command = document.getElementById("commandInput").value;
-            if (!command) {
-                alert("Please enter a Minecraft command.");
-                return;
-            }
-            const serverType = document.getElementById("serverSelect").value;
-            await sendRequest(`/mc/command/${serverType}?command=${encodeURIComponent(command)}`, "POST", "sendCmdBtn");
         }
 
         window.onload = async () => {
@@ -194,17 +183,6 @@
             </div>
         </div>
 
-        <div class="mt-4">
-            <label for="commandInput" class="form-label">Minecraft Command:</label>
-            <div class="input-group">
-                <select id="serverSelect" class="form-select" style="max-width: 180px;">
-                    <option value="forge">Forge</option>
-                    <option value="vanilla">Vanilla</option>
-                </select>
-                <input type="text" id="commandInput" class="form-control" placeholder="e.g. say Hello!">
-            </div>
-            <button id="sendCmdBtn" class="btn btn-primary mt-3" onclick="sendMinecraftCommand()">Send Command</button>
-        </div>
     </div>
 </body>
 
