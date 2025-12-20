@@ -35,6 +35,7 @@
                     document.getElementById("startBtn").disabled = true;
                     document.getElementById("stopBtn").disabled = false;
                     setMinecraftButtonsDisabled(false);
+                    setMinecraftStartButtonsEnabled();
                     await checkMinecraftStatuses();
                 } else {
                     document.getElementById("startBtn").disabled = true;
@@ -141,6 +142,11 @@
             document.getElementById("stopForgeBtn").disabled = isDisabled;
             document.getElementById("startVanillaBtn").disabled = isDisabled;
             document.getElementById("stopVanillaBtn").disabled = isDisabled;
+        }
+
+        function setMinecraftStartButtonsEnabled() {
+            document.getElementById("startForgeBtn").disabled = false;
+            document.getElementById("startVanillaBtn").disabled = false;
         }
 
         function setMinecraftStatusStopped() {
