@@ -29,6 +29,7 @@
                     document.getElementById("startBtn").disabled = false;
                     document.getElementById("stopBtn").disabled = true;
                     setMinecraftButtonsDisabled(true);
+                    setMinecraftStatusStopped();
                 } else if (ec2Status === "running") {
                     document.getElementById("startBtn").disabled = true;
                     document.getElementById("stopBtn").disabled = false;
@@ -138,6 +139,13 @@
             document.getElementById("stopForgeBtn").disabled = isDisabled;
             document.getElementById("startVanillaBtn").disabled = isDisabled;
             document.getElementById("stopVanillaBtn").disabled = isDisabled;
+        }
+
+        function setMinecraftStatusStopped() {
+            document.getElementById("forgeStatus").innerText = "FORGE Status: STOPPED";
+            document.getElementById("forgeUptime").innerText = "Uptime: --";
+            document.getElementById("vanillaStatus").innerText = "VANILLA Status: STOPPED";
+            document.getElementById("vanillaUptime").innerText = "Uptime: --";
         }
 
         window.onload = async () => {
