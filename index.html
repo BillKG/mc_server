@@ -18,7 +18,7 @@
 
         async function checkEC2Status() {
             try {
-                const response = await fetch(`${apiBaseUrl}/ec2/status`, { method: "GET" });
+                const response = await fetch(`${apiBaseUrl}/status`, { method: "GET" });
                 const result = await parseApiResponse(response);
                 const ec2Status = (result.state || "unknown").toLowerCase();
 
@@ -74,11 +74,11 @@
         }
 
         async function startServer() {
-            await sendRequest("/ec2/start", "POST", "startBtn");
+            await sendRequest("/start", "POST", "startBtn");
         }
 
         async function stopServer() {
-            await sendRequest("/ec2/stop", "POST", "stopBtn");
+            await sendRequest("/stop", "POST", "stopBtn");
         }
 
         async function startMinecraftServer(serverType, buttonId) {
