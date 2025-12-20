@@ -7,11 +7,20 @@
     <script>
         const apiBaseUrl = "https://mf5vuxlffg.execute-api.ap-southeast-2.amazonaws.com"; // Replace with your API Gateway URL
 
+        async function parseApiResponse(response) {
+            const text = await response.text();
+            try {
+                return JSON.parse(text);
+            } catch (error) {
+                return text;
+            }
+        }
+
         async function checkEC2Status() {
             try {
-                const response = await fetch(`${apiBaseUrl}/status`, { method: "GET" });
-                const result = await response.json();
-                const ec2Status = result.state.toLowerCase();
+                const response = await fetch(`${apiBaseUrl}/ec2/status`, { method: "GET" });
+                const result = await parseApiResponse(response);
+                const ec2Status = (result.state || "unknown").toLowerCase();
 
                 document.getElementById("ec2Status").innerText = `EC2 Status: ${ec2Status.toUpperCase()}`;
 
@@ -19,15 +28,15 @@
                 if (ec2Status === "stopped") {
                     document.getElementById("startBtn").disabled = false;
                     document.getElementById("stopBtn").disabled = true;
-                    document.getElementById("startMcBtn").disabled = true;
+                    setMinecraftButtonsDisabled(true);
                 } else if (ec2Status === "running") {
                     document.getElementById("startBtn").disabled = true;
                     document.getElementById("stopBtn").disabled = false;
-                    document.getElementById("startMcBtn").disabled = false;
+                    setMinecraftButtonsDisabled(false);
                 } else {
                     document.getElementById("startBtn").disabled = true;
                     document.getElementById("stopBtn").disabled = true;
-                    document.getElementById("startMcBtn").disabled = true;
+                    setMinecraftButtonsDisabled(true);
                 }
             } catch (error) {
                 console.error("Error fetching EC2 status:", error);
@@ -45,10 +54,15 @@
                     headers: { "Content-Type": "application/json" }
                 });
 
-                const result = await response.json();
-                alert(result.body || "Operation successful");
+                const result = await parseApiResponse(response);
+                if (typeof result === "string") {
+                    alert(result);
+                } else {
+                    alert(result.message || "Operation successful");
+                }
 
                 setTimeout(checkEC2Status, 3000); // Refresh EC2 status after action
+                setTimeout(checkMinecraftStatuses, 3000);
             } catch (error) {
                 console.error("Error:", error);
                 alert("Error processing request.");
@@ -60,15 +74,71 @@
         }
 
         async function startServer() {
-            await sendRequest("/start", "POST", "startBtn");
+            await sendRequest("/ec2/start", "POST", "startBtn");
         }
 
         async function stopServer() {
-            await sendRequest("/stop", "POST", "stopBtn");
+            await sendRequest("/ec2/stop", "POST", "stopBtn");
         }
 
-        async function startMinecraftServer() {
-            await sendRequest("/restart", "POST", "startMcBtn"); // Uses restart to start MC server
+        async function startMinecraftServer(serverType, buttonId) {
+            await sendRequest(`/mc/start/${serverType}`, "POST", buttonId);
+        }
+
+        async function stopMinecraftServer(serverType, buttonId) {
+            await sendRequest(`/mc/stop/${serverType}`, "POST", buttonId);
+        }
+
+        async function fetchMinecraftStatus(serverType) {
+            const response = await fetch(`${apiBaseUrl}/mc/status/${serverType}`, { method: "GET" });
+            return parseApiResponse(response);
+        }
+
+        function formatUptime(seconds) {
+            if (seconds === null || seconds === undefined) {
+                return "Uptime: --";
+            }
+            const total = Number(seconds);
+            const days = Math.floor(total / 86400);
+            const hours = Math.floor((total % 86400) / 3600);
+            const mins = Math.floor((total % 3600) / 60);
+            const secs = total % 60;
+            const parts = [];
+            if (days) parts.push(`${days}d`);
+            if (hours || days) parts.push(`${hours}h`);
+            if (mins || hours || days) parts.push(`${mins}m`);
+            parts.push(`${secs}s`);
+            return `Uptime: ${parts.join(" ")}`;
+        }
+
+        async function updateMinecraftStatus(serverType, statusId, uptimeId) {
+            try {
+                const result = await fetchMinecraftStatus(serverType);
+                const isRunning = result.running;
+                const statusEl = document.getElementById(statusId);
+                const uptimeEl = document.getElementById(uptimeId);
+                statusEl.innerText = `${serverType.toUpperCase()} Status: ${isRunning ? "RUNNING" : "STOPPED"}`;
+                uptimeEl.innerText = isRunning ? formatUptime(result.uptime_seconds) : "Uptime: --";
+            } catch (error) {
+                console.error("Error fetching Minecraft status:", error);
+                document.getElementById(statusId).innerText = `${serverType.toUpperCase()} Status: Unknown`;
+                document.getElementById(uptimeId).innerText = "Uptime: --";
+            }
+        }
+
+        async function checkMinecraftStatuses() {
+            await Promise.all([
+                updateMinecraftStatus("forge", "forgeStatus", "forgeUptime"),
+                updateMinecraftStatus("vanilla", "vanillaStatus", "vanillaUptime")
+            ]);
+        }
+
+        function setMinecraftButtonsDisabled(isDisabled) {
+            document.getElementById("startForgeBtn").disabled = isDisabled;
+            document.getElementById("stopForgeBtn").disabled = isDisabled;
+            document.getElementById("startVanillaBtn").disabled = isDisabled;
+            document.getElementById("stopVanillaBtn").disabled = isDisabled;
+            document.getElementById("sendCmdBtn").disabled = isDisabled;
         }
 
         async function sendMinecraftCommand() {
@@ -77,10 +147,14 @@
                 alert("Please enter a Minecraft command.");
                 return;
             }
-            await sendRequest(`/command?command=${encodeURIComponent(command)}`, "POST", "sendCmdBtn");
+            const serverType = document.getElementById("serverSelect").value;
+            await sendRequest(`/mc/command/${serverType}?command=${encodeURIComponent(command)}`, "POST", "sendCmdBtn");
         }
 
-        window.onload = checkEC2Status; // Load EC2 status on page load
+        window.onload = async () => {
+            await checkEC2Status();
+            await checkMinecraftStatuses();
+        };
     </script>
 </head>
 
@@ -92,13 +166,43 @@
         <div class="d-grid gap-3 mt-4">
             <button id="startBtn" class="btn btn-success" onclick="startServer()" disabled>Start EC2 Server</button>
             <button id="stopBtn" class="btn btn-danger" onclick="stopServer()" disabled>Stop EC2 Server</button>
-            <button id="startMcBtn" class="btn btn-warning" onclick="startMinecraftServer()" disabled>Start Minecraft
-                Server</button>
+        </div>
+
+        <div class="row mt-5">
+            <div class="col-md-6">
+                <h4>Forge Server</h4>
+                <p id="forgeStatus">FORGE Status: Checking...</p>
+                <p id="forgeUptime">Uptime: --</p>
+                <div class="d-grid gap-2">
+                    <button id="startForgeBtn" class="btn btn-warning"
+                        onclick="startMinecraftServer('forge', 'startForgeBtn')" disabled>Start Forge Server</button>
+                    <button id="stopForgeBtn" class="btn btn-outline-danger"
+                        onclick="stopMinecraftServer('forge', 'stopForgeBtn')" disabled>Stop Forge Server</button>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <h4>Vanilla Server</h4>
+                <p id="vanillaStatus">VANILLA Status: Checking...</p>
+                <p id="vanillaUptime">Uptime: --</p>
+                <div class="d-grid gap-2">
+                    <button id="startVanillaBtn" class="btn btn-warning"
+                        onclick="startMinecraftServer('vanilla', 'startVanillaBtn')" disabled>Start Vanilla
+                        Server</button>
+                    <button id="stopVanillaBtn" class="btn btn-outline-danger"
+                        onclick="stopMinecraftServer('vanilla', 'stopVanillaBtn')" disabled>Stop Vanilla Server</button>
+                </div>
+            </div>
         </div>
 
         <div class="mt-4">
             <label for="commandInput" class="form-label">Minecraft Command:</label>
-            <input type="text" id="commandInput" class="form-control" placeholder="e.g. say Hello!">
+            <div class="input-group">
+                <select id="serverSelect" class="form-select" style="max-width: 180px;">
+                    <option value="forge">Forge</option>
+                    <option value="vanilla">Vanilla</option>
+                </select>
+                <input type="text" id="commandInput" class="form-control" placeholder="e.g. say Hello!">
+            </div>
             <button id="sendCmdBtn" class="btn btn-primary mt-3" onclick="sendMinecraftCommand()">Send Command</button>
         </div>
     </div>
