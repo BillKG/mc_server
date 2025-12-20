@@ -30,10 +30,12 @@
                     document.getElementById("stopBtn").disabled = true;
                     setMinecraftButtonsDisabled(true);
                     setMinecraftStatusStopped();
+                    return;
                 } else if (ec2Status === "running") {
                     document.getElementById("startBtn").disabled = true;
                     document.getElementById("stopBtn").disabled = false;
                     setMinecraftButtonsDisabled(false);
+                    await checkMinecraftStatuses();
                 } else {
                     document.getElementById("startBtn").disabled = true;
                     document.getElementById("stopBtn").disabled = true;
@@ -150,7 +152,6 @@
 
         window.onload = async () => {
             await checkEC2Status();
-            await checkMinecraftStatuses();
         };
     </script>
 </head>
