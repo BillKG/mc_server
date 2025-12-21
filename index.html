@@ -21,8 +21,12 @@
                 const response = await fetch(`${apiBaseUrl}/status`, { method: "GET" });
                 const result = await parseApiResponse(response);
                 const ec2Status = (result.state || "unknown").toLowerCase();
+                const ec2Uptime = result.uptime_seconds;
 
                 document.getElementById("ec2Status").innerText = `EC2 Status: ${ec2Status.toUpperCase()}`;
+                document.getElementById("ec2Uptime").innerText = ec2Status === "running"
+                    ? formatUptime(ec2Uptime, "EC2 Uptime")
+                    : "EC2 Uptime: --";
 
                 // Enable/Disable buttons based on EC2 state
                 if (ec2Status === "stopped") {
@@ -101,9 +105,9 @@
             return parseApiResponse(response);
         }
 
-        function formatUptime(seconds) {
+        function formatUptime(seconds, label) {
             if (seconds === null || seconds === undefined) {
-                return "Uptime: --";
+                return `${label}: --`;
             }
             const total = Number(seconds);
             const days = Math.floor(total / 86400);
@@ -115,18 +119,16 @@
             if (hours || days) parts.push(`${hours}h`);
             if (mins || hours || days) parts.push(`${mins}m`);
             parts.push(`${secs}s`);
-            return `Uptime: ${parts.join(" ")}`;
+            return `${label}: ${parts.join(" ")}`;
         }
 
-        async function updateMinecraftStatus(serverType, statusId, uptimeId) {
+        async function updateMinecraftStatus(serverType, statusId) {
             try {
                 const result = await fetchMinecraftStatus(serverType);
                 const isRunning = result.running;
                 const statusEl = document.getElementById(statusId);
-                const uptimeEl = document.getElementById(uptimeId);
                 const screenSuffix = result.screen_id ? ` (screen ${result.screen_id})` : "";
                 statusEl.innerText = `${serverType.toUpperCase()} Status: ${isRunning ? "RUNNING" : "STOPPED"}${screenSuffix}`;
-                uptimeEl.innerText = isRunning ? formatUptime(result.uptime_seconds) : "Uptime: --";
 
                 if (serverType === "forge") {
                     document.getElementById("startForgeBtn").disabled = isRunning;
@@ -135,14 +137,13 @@
             } catch (error) {
                 console.error("Error fetching Minecraft status:", error);
                 document.getElementById(statusId).innerText = `${serverType.toUpperCase()} Status: Unknown`;
-                document.getElementById(uptimeId).innerText = "Uptime: --";
             }
         }
 
         async function checkMinecraftStatuses() {
             await Promise.all([
-                updateMinecraftStatus("forge", "forgeStatus", "forgeUptime"),
-                updateMinecraftStatus("vanilla", "vanillaStatus", "vanillaUptime")
+                updateMinecraftStatus("forge", "forgeStatus"),
+                updateMinecraftStatus("vanilla", "vanillaStatus")
             ]);
         }
 
@@ -160,9 +161,7 @@
 
         function setMinecraftStatusStopped() {
             document.getElementById("forgeStatus").innerText = "FORGE Status: STOPPED";
-            document.getElementById("forgeUptime").innerText = "Uptime: --";
             document.getElementById("vanillaStatus").innerText = "VANILLA Status: STOPPED";
-            document.getElementById("vanillaUptime").innerText = "Uptime: --";
         }
 
         window.onload = async () => {
@@ -175,6 +174,7 @@
     <div class="container mt-5">
         <h1 class="text-center">Minecraft Server Control</h1>
         <h3 class="text-center" id="ec2Status">EC2 Status: Checking...</h3>
+        <p class="text-center" id="ec2Uptime">EC2 Uptime: --</p>
 
         <div class="d-grid gap-3 mt-4">
             <button id="startBtn" class="btn btn-success" onclick="startServer()" disabled>Start EC2 Server</button>
@@ -185,7 +185,6 @@
             <div class="col-md-6">
                 <h4>Forge Server</h4>
                 <p id="forgeStatus">FORGE Status: Checking...</p>
-                <p id="forgeUptime">Uptime: --</p>
                 <div class="d-grid gap-2">
                     <button id="startForgeBtn" class="btn btn-warning"
                         onclick="startMinecraftServer('forge', 'startForgeBtn')" disabled>Start Forge Server</button>
@@ -196,7 +195,6 @@
             <div class="col-md-6">
                 <h4>Vanilla Server</h4>
                 <p id="vanillaStatus">VANILLA Status: Checking...</p>
-                <p id="vanillaUptime">Uptime: --</p>
                 <div class="d-grid gap-2">
                     <button id="startVanillaBtn" class="btn btn-warning"
                         onclick="startMinecraftServer('vanilla', 'startVanillaBtn')" disabled>Start Vanilla
