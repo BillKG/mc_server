@@ -59,10 +59,13 @@
                 });
 
                 const result = await parseApiResponse(response);
-                if (typeof result === "string") {
-                    alert(result);
+                const message = (result && typeof result === "object")
+                    ? (result.message || result.error || JSON.stringify(result))
+                    : result;
+                if (response.ok) {
+                    alert(message || "Operation successful");
                 } else {
-                    alert(result.message || "Operation successful");
+                    alert(message ? `Error: ${message}` : "Error processing request.");
                 }
 
                 setTimeout(checkEC2Status, 3000); // Refresh EC2 status after action
