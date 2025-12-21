@@ -124,8 +124,14 @@
                 const isRunning = result.running;
                 const statusEl = document.getElementById(statusId);
                 const uptimeEl = document.getElementById(uptimeId);
-                statusEl.innerText = `${serverType.toUpperCase()} Status: ${isRunning ? "RUNNING" : "STOPPED"}`;
+                const screenSuffix = result.screen_id ? ` (screen ${result.screen_id})` : "";
+                statusEl.innerText = `${serverType.toUpperCase()} Status: ${isRunning ? "RUNNING" : "STOPPED"}${screenSuffix}`;
                 uptimeEl.innerText = isRunning ? formatUptime(result.uptime_seconds) : "Uptime: --";
+
+                if (serverType === "forge") {
+                    document.getElementById("startForgeBtn").disabled = isRunning;
+                    document.getElementById("stopForgeBtn").disabled = !isRunning;
+                }
             } catch (error) {
                 console.error("Error fetching Minecraft status:", error);
                 document.getElementById(statusId).innerText = `${serverType.toUpperCase()} Status: Unknown`;
