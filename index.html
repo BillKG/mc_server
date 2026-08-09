@@ -794,6 +794,11 @@
         let sessionExpiryTimer = null;
         let toastTimer = null;
         let releaseCache = null;
+        let minecraftRunningState = {
+            forge: false,
+            vanilla: false,
+            hardcore: false
+        };
 
         try {
             const savedTheme = localStorage.getItem("mc-panel-theme");
@@ -1044,8 +1049,73 @@
             await sendRequest("/stop", "POST", "stopBtn");
         }
 
+        function minecraftServerLabel(serverType) {
+            return serverType.charAt(0).toUpperCase() + serverType.slice(1);
+        }
+
+        async function requestMinecraftAction(endpoint) {
+            const response = await apiFetch(endpoint, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" }
+            });
+            const result = await parseApiResponse(response);
+            const message = result && typeof result === "object"
+                ? (result.message || result.error || JSON.stringify(result))
+                : result;
+            if (!response.ok) throw new Error(message || "Request failed.");
+            return message || "Operation accepted.";
+        }
+
+        function wait(milliseconds) {
+            return new Promise(resolve => setTimeout(resolve, milliseconds));
+        }
+
+        async function waitForMinecraftServerToStop(serverType) {
+            for (let attempt = 0; attempt < 8; attempt += 1) {
+                await wait(attempt === 0 ? 1500 : 2500);
+                const status = await fetchMinecraftStatus(serverType);
+                if (!status.running) return;
+            }
+            throw new Error(`${minecraftServerLabel(serverType)} is still stopping. Try starting the new mode again in a moment.`);
+        }
+
         async function startMinecraftServer(serverType, buttonId) {
-            await sendRequest(`/mc/start/${serverType}`, "POST", buttonId);
+            const activeServerTypes = Object.entries(minecraftRunningState)
+                .filter(([activeType, isRunning]) => activeType !== serverType && isRunning)
+                .map(([activeType]) => activeType);
+
+            if (activeServerTypes.length === 0) {
+                await sendRequest(`/mc/start/${serverType}`, "POST", buttonId);
+                return;
+            }
+
+            const targetLabel = minecraftServerLabel(serverType);
+            const activeLabels = activeServerTypes.map(minecraftServerLabel).join(" and ");
+            const warning = `${activeLabels} is currently running. Stop it and switch to ${targetLabel}? Active players will be disconnected.`;
+            if (!confirm(warning)) return;
+
+            const button = document.getElementById(buttonId);
+            const originalLabel = button.textContent;
+            button.disabled = true;
+
+            try {
+                for (const activeType of activeServerTypes) {
+                    button.textContent = `Stopping ${minecraftServerLabel(activeType)}...`;
+                    await requestMinecraftAction(`/mc/stop/${activeType}`);
+                    await waitForMinecraftServerToStop(activeType);
+                }
+
+                button.textContent = `Starting ${targetLabel}...`;
+                const message = await requestMinecraftAction(`/mc/start/${serverType}`);
+                showToast(message || `${targetLabel} start accepted.`);
+            } catch (error) {
+                console.error(`Unable to switch to ${serverType}:`, error);
+                showToast(error.message || `Unable to switch to ${targetLabel}.`, "error");
+            } finally {
+                button.textContent = originalLabel;
+                setTimeout(refreshDashboard, 2500);
+                setTimeout(refreshDashboard, 10000);
+            }
         }
 
         async function stopMinecraftServer(serverType, buttonId) {
@@ -1283,17 +1353,33 @@
 
             if ([forgeRunning, vanillaRunning, hardcoreRunning].includes(null)) {
                 setMinecraftButtonsDisabled(true);
+                document.getElementById("hardcoreAvailability").textContent = "Server modes are unavailable until their status can be checked.";
                 return;
             }
 
-            const anyServerRunning = forgeRunning || vanillaRunning || hardcoreRunning;
-            document.getElementById("startForgeBtn").disabled = anyServerRunning;
+            minecraftRunningState = {
+                forge: forgeRunning,
+                vanilla: vanillaRunning,
+                hardcore: hardcoreRunning
+            };
+
+            document.getElementById("startForgeBtn").disabled = forgeRunning;
             document.getElementById("stopForgeBtn").disabled = !forgeRunning;
-            document.getElementById("startVanillaBtn").disabled = anyServerRunning;
+            document.getElementById("startVanillaBtn").disabled = vanillaRunning;
             document.getElementById("stopVanillaBtn").disabled = !vanillaRunning;
-            document.getElementById("startHardcoreBtn").disabled = anyServerRunning;
+            document.getElementById("startHardcoreBtn").disabled = hardcoreRunning;
             document.getElementById("stopHardcoreBtn").disabled = !hardcoreRunning;
             document.getElementById("resetHardcoreBtn").disabled = forgeRunning || vanillaRunning;
+
+            const activeStandardServer = forgeRunning ? "Forge" : (vanillaRunning ? "Vanilla" : "");
+            const availability = document.getElementById("hardcoreAvailability");
+            if (hardcoreRunning) {
+                availability.textContent = "Hardcore is running. Stop it before resetting the world.";
+            } else if (activeStandardServer) {
+                availability.textContent = `${activeStandardServer} is running. Start Hardcore will ask to stop it and switch modes; reset stays locked until it is stopped.`;
+            } else {
+                availability.textContent = "Hardcore is ready to start. Reset will permanently create a fresh world.";
+            }
         }
 
         function setMinecraftButtonsDisabled(isDisabled) {
@@ -1477,6 +1563,7 @@
                     <p id="hardcoreStatus" class="status-chip status-pending" aria-live="polite">HARDCORE: CHECKING</p>
                 </div>
                 <p class="server-description">A separate Hardcore world using the current Vanilla server version on port 25566.</p>
+                <p id="hardcoreAvailability" class="update-message" aria-live="polite">Checking which server mode is active...</p>
                 <p class="hardcore-warning">Death is permanent. Reset permanently deletes only the Hardcore world, creates a fresh world, and starts it immediately. No S3 backup is created.</p>
                 <div class="action-grid">
                     <button id="startHardcoreBtn" class="mc-btn btn-start" type="button"
