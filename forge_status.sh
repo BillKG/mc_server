@@ -5,7 +5,7 @@ SERVER_DIR="/home/ubuntu/forge-1.20.1"
 SCREEN_ID_FILE="${SERVER_DIR}/screen_id.txt"
 
 if [[ ! -s "${SCREEN_ID_FILE}" ]]; then
-  sid_full="$(screen -ls | awk '/\.forge[[:space:]]/{print $1; exit}')"
+  sid_full="$(screen -ls 2>/dev/null | awk '/\.forge[[:space:]]/{print $1; exit}' || true)"
   sid="${sid_full%%.*}"
   if [[ -n "${sid}" ]]; then
     echo "${sid}" > "${SCREEN_ID_FILE}"

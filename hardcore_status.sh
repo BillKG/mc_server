@@ -5,7 +5,7 @@ SERVER_DIR="/home/ubuntu/mc_hardcore/minecraft"
 SCREEN_ID_FILE="${SERVER_DIR}/screen_id.txt"
 
 if [[ ! -s "${SCREEN_ID_FILE}" ]]; then
-  sid_full="$(screen -ls | awk '/\.hardcore[[:space:]]/{print $1; exit}')"
+  sid_full="$(screen -ls 2>/dev/null | awk '/\.hardcore[[:space:]]/{print $1; exit}' || true)"
   sid="${sid_full%%.*}"
   if [[ -n "${sid}" ]]; then
     echo "${sid}" > "${SCREEN_ID_FILE}"
