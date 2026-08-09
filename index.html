@@ -433,6 +433,11 @@
             background: var(--gold);
         }
 
+        .btn-reset {
+            grid-column: 1 / -1;
+            background: #751f25;
+        }
+
         .server-grid {
             display: grid;
             grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -453,6 +458,26 @@
         .server-card.vanilla::before {
             border-color: var(--grass-dark);
             background: var(--grass);
+        }
+
+        .server-card.hardcore {
+            grid-column: 1 / -1;
+        }
+
+        .server-card.hardcore::before {
+            border-color: #5f181d;
+            background: var(--danger);
+        }
+
+        .hardcore-warning {
+            margin: 18px 0;
+            padding: 12px 14px;
+            border: 2px solid var(--danger-dark);
+            color: var(--danger);
+            background: color-mix(in srgb, var(--panel-soft) 82%, var(--danger) 18%);
+            font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+            font-size: .82rem;
+            font-weight: 850;
         }
 
         .server-title-row {
@@ -761,6 +786,7 @@
         const apiBaseUrl = "https://w6b144nh04.execute-api.ap-southeast-2.amazonaws.com";
         const mojangManifestUrl = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json";
         const vanillaAddress = "3.104.205.239:25565";
+        const hardcoreAddress = "3.104.205.239:25566";
         let authToken = "";
         let authExpiresAt = 0;
         let refreshInFlight = null;
@@ -967,8 +993,7 @@
                 } else if (ec2Status === "running") {
                     document.getElementById("startBtn").disabled = true;
                     document.getElementById("stopBtn").disabled = false;
-                    setMinecraftButtonsDisabled(false);
-                    setMinecraftStartButtonsEnabled();
+                    setMinecraftButtonsDisabled(true);
                     await checkMinecraftStatuses();
                 } else {
                     document.getElementById("startBtn").disabled = true;
@@ -1169,6 +1194,35 @@
             }
         }
 
+        async function resetHardcoreWorld() {
+            const resetButton = document.getElementById("resetHardcoreBtn");
+            const warning = "Permanently delete the Hardcore world with NO BACKUP and immediately create a new world?";
+            if (!confirm(warning)) return;
+
+            resetButton.disabled = true;
+            resetButton.textContent = "Resetting world...";
+            try {
+                const response = await apiFetch("/mc/reset/hardcore", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ confirmation: "RESET" })
+                });
+                const result = await parseApiResponse(response);
+                const message = result && typeof result === "object"
+                    ? (result.message || result.error || JSON.stringify(result))
+                    : result;
+                if (!response.ok) throw new Error(message || "Unable to reset the Hardcore world.");
+                showToast(message || "Hardcore world reset and restarted.");
+            } catch (error) {
+                console.error("Hardcore reset failed:", error);
+                showToast(error.message || "Unable to reset the Hardcore world.", "error");
+            } finally {
+                resetButton.textContent = "Reset & Start New World";
+                setTimeout(refreshDashboard, 2500);
+                setTimeout(refreshDashboard, 10000);
+            }
+        }
+
         async function fetchMinecraftStatus(serverType) {
             const response = await apiFetch(`/mc/status/${serverType}`, {
                 method: "GET",
@@ -1212,45 +1266,52 @@
                 const result = await fetchMinecraftStatus(serverType);
                 const detail = result.screen_id ? ` · SCREEN ${result.screen_id}` : "";
                 setStatus(statusId, serverType, result.running ? "running" : "stopped", detail);
-
-                if (serverType === "forge") {
-                    document.getElementById("startForgeBtn").disabled = result.running;
-                    document.getElementById("stopForgeBtn").disabled = !result.running;
-                } else {
-                    document.getElementById("startVanillaBtn").disabled = result.running;
-                    document.getElementById("stopVanillaBtn").disabled = !result.running;
-                }
+                return Boolean(result.running);
             } catch (error) {
                 console.error(`Error fetching ${serverType} status:`, error);
                 setStatus(statusId, serverType, "unknown");
+                return null;
             }
         }
 
         async function checkMinecraftStatuses() {
-            await Promise.all([
+            const [forgeRunning, vanillaRunning, hardcoreRunning] = await Promise.all([
                 updateMinecraftStatus("forge", "forgeStatus"),
-                updateMinecraftStatus("vanilla", "vanillaStatus")
+                updateMinecraftStatus("vanilla", "vanillaStatus"),
+                updateMinecraftStatus("hardcore", "hardcoreStatus")
             ]);
+
+            if ([forgeRunning, vanillaRunning, hardcoreRunning].includes(null)) {
+                setMinecraftButtonsDisabled(true);
+                return;
+            }
+
+            const anyServerRunning = forgeRunning || vanillaRunning || hardcoreRunning;
+            document.getElementById("startForgeBtn").disabled = anyServerRunning;
+            document.getElementById("stopForgeBtn").disabled = !forgeRunning;
+            document.getElementById("startVanillaBtn").disabled = anyServerRunning;
+            document.getElementById("stopVanillaBtn").disabled = !vanillaRunning;
+            document.getElementById("startHardcoreBtn").disabled = anyServerRunning;
+            document.getElementById("stopHardcoreBtn").disabled = !hardcoreRunning;
+            document.getElementById("resetHardcoreBtn").disabled = forgeRunning || vanillaRunning;
         }
 
         function setMinecraftButtonsDisabled(isDisabled) {
-            ["startForgeBtn", "stopForgeBtn", "startVanillaBtn", "stopVanillaBtn"]
+            ["startForgeBtn", "stopForgeBtn", "startVanillaBtn", "stopVanillaBtn",
+                "startHardcoreBtn", "stopHardcoreBtn", "resetHardcoreBtn"]
                 .forEach(id => document.getElementById(id).disabled = isDisabled);
-        }
-
-        function setMinecraftStartButtonsEnabled() {
-            document.getElementById("startForgeBtn").disabled = false;
-            document.getElementById("startVanillaBtn").disabled = false;
         }
 
         function setMinecraftStatusStopped() {
             setStatus("forgeStatus", "Forge", "stopped");
             setStatus("vanillaStatus", "Vanilla", "stopped");
+            setStatus("hardcoreStatus", "Hardcore", "stopped");
         }
 
         function setMinecraftStatusUnknown() {
             setStatus("forgeStatus", "Forge", "unknown");
             setStatus("vanillaStatus", "Vanilla", "unknown");
+            setStatus("hardcoreStatus", "Hardcore", "unknown");
         }
 
         async function refreshDashboard() {
@@ -1263,12 +1324,12 @@
             return refreshInFlight;
         }
 
-        async function copyServerAddress() {
+        async function copyServerAddress(address, label) {
             try {
-                await navigator.clipboard.writeText(vanillaAddress);
-                showToast("Vanilla server address copied.");
+                await navigator.clipboard.writeText(address);
+                showToast(`${label} server address copied.`);
             } catch (error) {
-                showToast(`Connect with ${vanillaAddress}`, "error");
+                showToast(`Connect with ${address}`, "error");
             }
         }
 
@@ -1313,7 +1374,7 @@
                 <div>
                     <p class="eyebrow">Minecraft control panel</p>
                     <h1>Miners Server</h1>
-                    <p class="hero-copy">A small control room for the Forge and Vanilla worlds.</p>
+                    <p class="hero-copy">A small control room for the Forge, Vanilla, and Hardcore worlds.</p>
                 </div>
             </div>
             <div class="hero-actions">
@@ -1406,6 +1467,26 @@
                         hidden disabled>Back Up &amp; Update Vanilla</button>
                 </div>
             </article>
+
+            <article class="server-card hardcore">
+                <div class="server-title-row">
+                    <div>
+                        <p class="card-kicker">One life · No backups</p>
+                        <h2>Hardcore Server</h2>
+                    </div>
+                    <p id="hardcoreStatus" class="status-chip status-pending" aria-live="polite">HARDCORE: CHECKING</p>
+                </div>
+                <p class="server-description">A separate Hardcore world using the current Vanilla server version on port 25566.</p>
+                <p class="hardcore-warning">Death is permanent. Reset permanently deletes only the Hardcore world, creates a fresh world, and starts it immediately. No S3 backup is created.</p>
+                <div class="action-grid">
+                    <button id="startHardcoreBtn" class="mc-btn btn-start" type="button"
+                        onclick="startMinecraftServer('hardcore', 'startHardcoreBtn')" disabled>Start Hardcore</button>
+                    <button id="stopHardcoreBtn" class="mc-btn btn-stop" type="button"
+                        onclick="stopMinecraftServer('hardcore', 'stopHardcoreBtn')" disabled>Stop Hardcore</button>
+                    <button id="resetHardcoreBtn" class="mc-btn btn-reset" type="button"
+                        onclick="resetHardcoreWorld()" disabled>Reset &amp; Start New World</button>
+                </div>
+            </article>
         </section>
 
         <section class="connection-panel" aria-labelledby="connectionHeading">
@@ -1414,7 +1495,17 @@
                     <p class="card-kicker">Direct connect · Vanilla</p>
                     <h2 id="connectionHeading" class="connection-address">3.104.205.239:25565</h2>
                 </div>
-                <button class="copy-button" type="button" onclick="copyServerAddress()">Copy address</button>
+                <button class="copy-button" type="button" onclick="copyServerAddress(vanillaAddress, 'Vanilla')">Copy address</button>
+            </div>
+        </section>
+
+        <section class="connection-panel" aria-labelledby="hardcoreConnectionHeading">
+            <div class="connection-row">
+                <div>
+                    <p class="card-kicker">Direct connect · Hardcore</p>
+                    <h2 id="hardcoreConnectionHeading" class="connection-address">3.104.205.239:25566</h2>
+                </div>
+                <button class="copy-button" type="button" onclick="copyServerAddress(hardcoreAddress, 'Hardcore')">Copy address</button>
             </div>
         </section>
 
