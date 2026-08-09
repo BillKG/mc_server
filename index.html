@@ -117,7 +117,7 @@
                 versionStatus.innerText = `Vanilla version: ${result.installed_version || "unknown"} (latest: ${result.latest_version || "unknown"})`;
                 updateMessage.innerText = result.message || "";
 
-                const updateInProgress = ["scheduled", "updating"].includes(result.update_state);
+                const updateInProgress = ["checking", "scheduled", "updating"].includes(result.update_state);
                 const canUpdate = result.update_available && result.updates_enabled && !updateInProgress;
                 updateButton.hidden = !result.update_available;
                 updateButton.disabled = !canUpdate;
@@ -127,12 +127,21 @@
                 } else if (!result.update_available) {
                     updateMessage.innerText = result.message || "Vanilla is up to date.";
                 }
+                return result;
             } catch (error) {
                 console.error("Error checking vanilla update status:", error);
                 versionStatus.innerText = "Vanilla version: Update check unavailable";
                 updateMessage.innerText = error.message;
                 updateButton.hidden = true;
                 updateButton.disabled = true;
+                return null;
+            }
+        }
+
+        async function pollVanillaUpdateStatus(attemptsRemaining = 12) {
+            const result = await checkVanillaUpdateStatus();
+            if (attemptsRemaining > 0 && result && ["checking", "updating"].includes(result.update_state)) {
+                setTimeout(() => pollVanillaUpdateStatus(attemptsRemaining - 1), 10000);
             }
         }
 
@@ -162,7 +171,7 @@
                 updateMessage.innerText = error.message;
                 alert(`Error: ${error.message}`);
             } finally {
-                setTimeout(checkVanillaUpdateStatus, 3000);
+                setTimeout(pollVanillaUpdateStatus, 3000);
             }
         }
 
