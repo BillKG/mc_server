@@ -43,7 +43,7 @@ screen -L -Logfile "${LOG_FILE}" -dmS "${SCREEN_NAME}" bash -lc "cd ${SERVER_DIR
 sid_full=""
 for _ in {1..5}; do
   sleep 2
-  sid_full="$(screen -ls | awk '/\.hardcore[[:space:]]/{print $1; exit}')"
+  sid_full="$(screen -ls 2>/dev/null | awk '/\.hardcore[[:space:]]/{print $1; exit}' || true)"
   if [[ -n "${sid_full}" ]]; then
     break
   fi

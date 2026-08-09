@@ -8,7 +8,7 @@ sid=""
 if [[ -s "${SCREEN_ID_FILE}" ]]; then
   sid="$(cat "${SCREEN_ID_FILE}")"
 else
-  sid_full="$(screen -ls | awk '/\.hardcore[[:space:]]/{print $1; exit}')"
+  sid_full="$(screen -ls 2>/dev/null | awk '/\.hardcore[[:space:]]/{print $1; exit}' || true)"
   sid="${sid_full%%.*}"
 fi
 
