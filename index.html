@@ -101,6 +101,71 @@
             await sendRequest(`/mc/stop/${serverType}`, "POST", buttonId);
         }
 
+        async function checkVanillaUpdateStatus() {
+            const versionStatus = document.getElementById("vanillaVersionStatus");
+            const updateMessage = document.getElementById("vanillaUpdateMessage");
+            const updateButton = document.getElementById("updateVanillaBtn");
+
+            try {
+                const response = await fetch(`${apiBaseUrl}/mc/update/vanilla/status`, { method: "GET" });
+                const result = await parseApiResponse(response);
+                if (!response.ok || !result || typeof result !== "object") {
+                    const message = result && result.error ? result.error : "Unable to check for a vanilla update.";
+                    throw new Error(message);
+                }
+
+                versionStatus.innerText = `Vanilla version: ${result.installed_version || "unknown"} (latest: ${result.latest_version || "unknown"})`;
+                updateMessage.innerText = result.message || "";
+
+                const updateInProgress = ["scheduled", "updating"].includes(result.update_state);
+                const canUpdate = result.update_available && result.updates_enabled && !updateInProgress;
+                updateButton.hidden = !result.update_available;
+                updateButton.disabled = !canUpdate;
+
+                if (result.update_available && !result.updates_enabled) {
+                    updateMessage.innerText = "An update is available. Email notification confirmation is required before updates can be enabled.";
+                } else if (!result.update_available) {
+                    updateMessage.innerText = result.message || "Vanilla is up to date.";
+                }
+            } catch (error) {
+                console.error("Error checking vanilla update status:", error);
+                versionStatus.innerText = "Vanilla version: Update check unavailable";
+                updateMessage.innerText = error.message;
+                updateButton.hidden = true;
+                updateButton.disabled = true;
+            }
+        }
+
+        async function updateVanillaServer() {
+            const updateButton = document.getElementById("updateVanillaBtn");
+            const updateMessage = document.getElementById("vanillaUpdateMessage");
+            const confirmed = confirm("Update the vanilla server? The world will be backed up to S3 before the server software changes.");
+            if (!confirmed) return;
+
+            updateButton.disabled = true;
+            updateMessage.innerText = "Requesting vanilla update...";
+            try {
+                const response = await fetch(`${apiBaseUrl}/mc/update/vanilla`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" }
+                });
+                const result = await parseApiResponse(response);
+                const message = result && typeof result === "object"
+                    ? (result.message || result.error || JSON.stringify(result))
+                    : result;
+                if (!response.ok) throw new Error(message || "Unable to request the vanilla update.");
+
+                updateMessage.innerText = message || "Vanilla update accepted.";
+                alert(message || "Vanilla update accepted.");
+            } catch (error) {
+                console.error("Error requesting vanilla update:", error);
+                updateMessage.innerText = error.message;
+                alert(`Error: ${error.message}`);
+            } finally {
+                setTimeout(checkVanillaUpdateStatus, 3000);
+            }
+        }
+
         async function fetchMinecraftStatus(serverType) {
             const response = await fetch(`${apiBaseUrl}/mc/status/${serverType}`, { method: "GET" });
             return parseApiResponse(response);
@@ -169,7 +234,10 @@
         }
 
         window.onload = async () => {
-            await checkEC2Status();
+            await Promise.all([
+                checkEC2Status(),
+                checkVanillaUpdateStatus()
+            ]);
         };
     </script>
 </head>
@@ -200,12 +268,16 @@
             <div class="col-md-6">
                 <h4>Vanilla Server</h4>
                 <p id="vanillaStatus">VANILLA Status: Checking...</p>
+                <p id="vanillaVersionStatus">Vanilla version: Checking...</p>
+                <p id="vanillaUpdateMessage" class="small text-muted" aria-live="polite"></p>
                 <div class="d-grid gap-2">
                     <button id="startVanillaBtn" class="btn btn-warning"
                         onclick="startMinecraftServer('vanilla', 'startVanillaBtn')" disabled>Start Vanilla
                         Server</button>
                     <button id="stopVanillaBtn" class="btn btn-outline-danger"
                         onclick="stopMinecraftServer('vanilla', 'stopVanillaBtn')" disabled>Stop Vanilla Server</button>
+                    <button id="updateVanillaBtn" class="btn btn-primary" onclick="updateVanillaServer()" hidden
+                        disabled>Update Vanilla Server</button>
                 </div>
             </div>
         </div>
