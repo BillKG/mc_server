@@ -34,7 +34,7 @@ fi
 : > "${SCREEN_ID_FILE}"
 
 # Hardcore worlds are intentionally disposable and are never backed up.
-rm -rf -- \
+sudo -n rm -rf -- \
   "${SERVER_DIR}/world" \
   "${SERVER_DIR}/world_nether" \
   "${SERVER_DIR}/world_the_end"
