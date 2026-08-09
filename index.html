@@ -284,6 +284,12 @@
             border-color: var(--grass-light);
         }
 
+        .hero-actions {
+            display: flex;
+            flex: 0 0 auto;
+            gap: 10px;
+        }
+
         .theme-icon {
             font-size: 1.1rem;
         }
@@ -691,6 +697,11 @@
                 width: 100%;
             }
 
+            .hero-actions {
+                width: 100%;
+                flex-direction: column;
+            }
+
             .server-grid {
                 display: grid;
             }
@@ -750,9 +761,11 @@
         const apiBaseUrl = "https://w6b144nh04.execute-api.ap-southeast-2.amazonaws.com";
         const mojangManifestUrl = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json";
         const vanillaAddress = "3.104.205.239:25565";
-        const panelPasscode = "67939";
+        let authToken = "";
+        let authExpiresAt = 0;
         let refreshInFlight = null;
         let dashboardRefreshTimer = null;
+        let sessionExpiryTimer = null;
         let toastTimer = null;
         let releaseCache = null;
 
@@ -790,30 +803,129 @@
             updateThemeButton();
         }
 
-        function unlockDashboard(event) {
-            event.preventDefault();
-            const input = document.getElementById("passcodeInput");
-            const errorMessage = document.getElementById("accessError");
+        function saveAuthSession(token, expiresAt) {
+            authToken = token;
+            authExpiresAt = Number(expiresAt) || 0;
+            try {
+                sessionStorage.setItem("mc-panel-token", authToken);
+                sessionStorage.setItem("mc-panel-expires-at", String(authExpiresAt));
+            } catch (error) {
+                console.warn("Authenticated session could not be persisted:", error);
+            }
+        }
 
-            if (input.value !== panelPasscode) {
-                input.value = "";
-                input.setAttribute("aria-invalid", "true");
-                errorMessage.textContent = "Incorrect passcode. Try again.";
-                input.focus();
+        function clearAuthSession() {
+            authToken = "";
+            authExpiresAt = 0;
+            clearTimeout(sessionExpiryTimer);
+            sessionExpiryTimer = null;
+            try {
+                sessionStorage.removeItem("mc-panel-token");
+                sessionStorage.removeItem("mc-panel-expires-at");
+            } catch (error) {
+                console.warn("Authenticated session could not be cleared:", error);
+            }
+        }
+
+        function scheduleSessionExpiry() {
+            clearTimeout(sessionExpiryTimer);
+            const millisecondsRemaining = (authExpiresAt * 1000) - Date.now();
+            if (millisecondsRemaining <= 0) {
+                lockDashboard("Your session expired. Enter the passcode again.");
                 return;
             }
+            sessionExpiryTimer = setTimeout(() => {
+                lockDashboard("Your session expired. Enter the passcode again.");
+            }, millisecondsRemaining);
+        }
 
-            input.value = "";
-            input.removeAttribute("aria-invalid");
-            errorMessage.textContent = "";
+        function showDashboard() {
             document.getElementById("accessGate").hidden = true;
             document.getElementById("dashboardRoot").hidden = false;
             updateThemeButton();
+            scheduleSessionExpiry();
             refreshDashboard();
 
             if (!dashboardRefreshTimer) {
                 dashboardRefreshTimer = setInterval(refreshDashboard, 30000);
             }
+        }
+
+        function lockDashboard(message = "") {
+            clearAuthSession();
+            clearInterval(dashboardRefreshTimer);
+            dashboardRefreshTimer = null;
+            document.getElementById("dashboardRoot").hidden = true;
+            document.getElementById("accessGate").hidden = false;
+            document.getElementById("accessError").textContent = message;
+            document.getElementById("passcodeInput").focus();
+        }
+
+        async function authenticateDashboard(event) {
+            event.preventDefault();
+            const input = document.getElementById("passcodeInput");
+            const errorMessage = document.getElementById("accessError");
+            const submitButton = document.getElementById("accessSubmitButton");
+            submitButton.disabled = true;
+            submitButton.textContent = "Checking...";
+            errorMessage.textContent = "";
+
+            try {
+                const response = await fetch(`${apiBaseUrl}/auth/login`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ passcode: input.value })
+                });
+                const result = await parseApiResponse(response);
+                if (!response.ok || !result || typeof result !== "object" || !result.token) {
+                    throw new Error(result?.message || "Authentication failed.");
+                }
+
+                saveAuthSession(result.token, result.expires_at);
+                input.value = "";
+                input.removeAttribute("aria-invalid");
+                showDashboard();
+            } catch (error) {
+                clearAuthSession();
+                input.value = "";
+                input.setAttribute("aria-invalid", "true");
+                errorMessage.textContent = error.message || "Authentication failed.";
+                input.focus();
+            } finally {
+                submitButton.disabled = false;
+                submitButton.textContent = "Enter Server Panel";
+            }
+        }
+
+        async function logoutDashboard() {
+            const token = authToken;
+            try {
+                if (token) {
+                    await fetch(`${apiBaseUrl}/auth/logout`, {
+                        method: "POST",
+                        headers: { "Authorization": `Bearer ${token}` }
+                    });
+                }
+            } catch (error) {
+                console.warn("Server session could not be revoked:", error);
+            } finally {
+                lockDashboard("You have signed out.");
+            }
+        }
+
+        async function apiFetch(path, options = {}) {
+            if (!authToken) {
+                lockDashboard("Enter the passcode to continue.");
+                throw new Error("Authentication required.");
+            }
+
+            const headers = new Headers(options.headers || {});
+            headers.set("Authorization", `Bearer ${authToken}`);
+            const response = await fetch(`${apiBaseUrl}${path}`, { ...options, headers });
+            if (response.status === 401 || response.status === 403) {
+                lockDashboard("Your session expired. Enter the passcode again.");
+            }
+            return response;
         }
 
         function showToast(message, type = "success") {
@@ -835,7 +947,7 @@
 
         async function checkEC2Status() {
             try {
-                const response = await fetch(`${apiBaseUrl}/status`, { method: "GET", cache: "no-store" });
+                const response = await apiFetch("/status", { method: "GET", cache: "no-store" });
                 const result = await parseApiResponse(response);
                 if (!response.ok || !result || typeof result !== "object") {
                     throw new Error(result?.message || "Unable to read EC2 status.");
@@ -879,7 +991,7 @@
             button.textContent = "Working...";
 
             try {
-                const response = await fetch(`${apiBaseUrl}${endpoint}`, {
+                const response = await apiFetch(endpoint, {
                     method,
                     headers: { "Content-Type": "application/json" }
                 });
@@ -921,7 +1033,7 @@
             const updateButton = document.getElementById("updateVanillaBtn");
 
             try {
-                const response = await fetch(`${apiBaseUrl}/mc/update/vanilla/status`, {
+                const response = await apiFetch("/mc/update/vanilla/status", {
                     method: "GET",
                     cache: "no-store"
                 });
@@ -1037,7 +1149,7 @@
             updateButton.disabled = true;
             updateMessage.textContent = "Requesting vanilla update...";
             try {
-                const response = await fetch(`${apiBaseUrl}/mc/update/vanilla`, {
+                const response = await apiFetch("/mc/update/vanilla", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" }
                 });
@@ -1058,7 +1170,7 @@
         }
 
         async function fetchMinecraftStatus(serverType) {
-            const response = await fetch(`${apiBaseUrl}/mc/status/${serverType}`, {
+            const response = await apiFetch(`/mc/status/${serverType}`, {
                 method: "GET",
                 cache: "no-store"
             });
@@ -1161,7 +1273,18 @@
         }
 
         window.addEventListener("load", () => {
-            document.getElementById("passcodeInput").focus();
+            try {
+                authToken = sessionStorage.getItem("mc-panel-token") || "";
+                authExpiresAt = Number(sessionStorage.getItem("mc-panel-expires-at")) || 0;
+            } catch (error) {
+                clearAuthSession();
+            }
+
+            if (authToken && authExpiresAt * 1000 > Date.now()) {
+                showDashboard();
+            } else {
+                lockDashboard();
+            }
         });
     </script>
 </head>
@@ -1173,11 +1296,11 @@
             <p class="eyebrow">Private control panel</p>
             <h1 id="accessHeading">Miners Server</h1>
             <p class="access-copy">Enter the passcode to manage the Minecraft servers.</p>
-            <form class="access-form" onsubmit="unlockDashboard(event)">
+            <form class="access-form" onsubmit="authenticateDashboard(event)">
                 <label class="label" for="passcodeInput">Passcode</label>
                 <input id="passcodeInput" class="passcode-input" type="password" inputmode="numeric" pattern="[0-9]*"
                     maxlength="5" autocomplete="current-password" aria-describedby="accessError" required>
-                <button class="mc-btn btn-start" type="submit">Enter Server Panel</button>
+                <button id="accessSubmitButton" class="mc-btn btn-start" type="submit">Enter Server Panel</button>
                 <p id="accessError" class="access-error" aria-live="polite"></p>
             </form>
         </div>
@@ -1193,10 +1316,13 @@
                     <p class="hero-copy">A small control room for the Forge and Vanilla worlds.</p>
                 </div>
             </div>
-            <button id="themeToggle" class="theme-toggle" type="button" onclick="toggleTheme()" aria-pressed="false">
-                <span id="themeIcon" class="theme-icon" aria-hidden="true">☀</span>
-                <span id="themeLabel">Light mode</span>
-            </button>
+            <div class="hero-actions">
+                <button id="themeToggle" class="theme-toggle" type="button" onclick="toggleTheme()" aria-pressed="false">
+                    <span id="themeIcon" class="theme-icon" aria-hidden="true">☀</span>
+                    <span id="themeLabel">Light mode</span>
+                </button>
+                <button class="theme-toggle" type="button" onclick="logoutDashboard()">Sign out</button>
+            </div>
         </header>
 
         <section class="mc-panel" aria-labelledby="hostHeading">
