@@ -5,7 +5,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#0d1511">
-    <title>BlockOps — Minecraft Server Panel</title>
+    <title>Miners Server — Minecraft Server Panel</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <style>
         :root {
@@ -79,8 +79,89 @@
         }
 
         button,
+        input,
         summary {
             font: inherit;
+        }
+
+        [hidden] {
+            display: none !important;
+        }
+
+        .access-gate {
+            display: grid;
+            min-height: 100vh;
+            padding: 24px;
+            place-items: center;
+        }
+
+        .access-card {
+            position: relative;
+            width: min(440px, 100%);
+            padding: 34px;
+            overflow: hidden;
+            border: 2px solid var(--line);
+            background: var(--panel);
+            box-shadow: 0 8px 0 var(--shadow);
+            text-align: center;
+        }
+
+        .access-card::before {
+            position: absolute;
+            inset: -2px -2px auto;
+            height: 8px;
+            content: "";
+            border: 2px solid var(--grass-dark);
+            border-bottom: 0;
+            background: var(--grass);
+        }
+
+        .access-card .block-logo {
+            margin: 0 auto 22px;
+        }
+
+        .access-card h1 {
+            margin-bottom: 10px;
+        }
+
+        .access-copy {
+            margin-bottom: 24px;
+            color: var(--muted);
+        }
+
+        .access-form {
+            display: grid;
+            gap: 12px;
+            text-align: left;
+        }
+
+        .passcode-input {
+            width: 100%;
+            padding: 13px 14px;
+            border: 2px solid var(--line-bright);
+            border-radius: 0;
+            outline: 0;
+            color: var(--text);
+            background: var(--panel-soft);
+            font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+            font-size: 1.15rem;
+            font-weight: 900;
+            letter-spacing: .35em;
+            text-align: center;
+        }
+
+        .passcode-input:focus {
+            border-color: var(--focus);
+            box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 24%, transparent);
+        }
+
+        .access-error {
+            min-height: 1.25rem;
+            margin: 0;
+            color: var(--danger);
+            font-size: .82rem;
+            font-weight: 800;
+            text-align: center;
         }
 
         .shell {
@@ -669,7 +750,9 @@
         const apiBaseUrl = "https://w6b144nh04.execute-api.ap-southeast-2.amazonaws.com";
         const mojangManifestUrl = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json";
         const vanillaAddress = "3.104.205.239:25565";
+        const panelPasscode = "67939";
         let refreshInFlight = null;
+        let dashboardRefreshTimer = null;
         let toastTimer = null;
         let releaseCache = null;
 
@@ -705,6 +788,32 @@
                 console.warn("Theme preference could not be saved:", error);
             }
             updateThemeButton();
+        }
+
+        function unlockDashboard(event) {
+            event.preventDefault();
+            const input = document.getElementById("passcodeInput");
+            const errorMessage = document.getElementById("accessError");
+
+            if (input.value !== panelPasscode) {
+                input.value = "";
+                input.setAttribute("aria-invalid", "true");
+                errorMessage.textContent = "Incorrect passcode. Try again.";
+                input.focus();
+                return;
+            }
+
+            input.value = "";
+            input.removeAttribute("aria-invalid");
+            errorMessage.textContent = "";
+            document.getElementById("accessGate").hidden = true;
+            document.getElementById("dashboardRoot").hidden = false;
+            updateThemeButton();
+            refreshDashboard();
+
+            if (!dashboardRefreshTimer) {
+                dashboardRefreshTimer = setInterval(refreshDashboard, 30000);
+            }
         }
 
         function showToast(message, type = "success") {
@@ -1051,22 +1160,36 @@
             }
         }
 
-        window.addEventListener("load", async () => {
-            updateThemeButton();
-            await refreshDashboard();
-            setInterval(refreshDashboard, 30000);
+        window.addEventListener("load", () => {
+            document.getElementById("passcodeInput").focus();
         });
     </script>
 </head>
 
 <body>
-    <main class="shell">
+    <section id="accessGate" class="access-gate" aria-labelledby="accessHeading">
+        <div class="access-card">
+            <div class="block-logo" aria-hidden="true">MC</div>
+            <p class="eyebrow">Private control panel</p>
+            <h1 id="accessHeading">Miners Server</h1>
+            <p class="access-copy">Enter the passcode to manage the Minecraft servers.</p>
+            <form class="access-form" onsubmit="unlockDashboard(event)">
+                <label class="label" for="passcodeInput">Passcode</label>
+                <input id="passcodeInput" class="passcode-input" type="password" inputmode="numeric" pattern="[0-9]*"
+                    maxlength="5" autocomplete="current-password" aria-describedby="accessError" required>
+                <button class="mc-btn btn-start" type="submit">Enter Server Panel</button>
+                <p id="accessError" class="access-error" aria-live="polite"></p>
+            </form>
+        </div>
+    </section>
+
+    <main id="dashboardRoot" class="shell" hidden>
         <header class="hero">
             <div class="brand">
                 <div class="block-logo" aria-hidden="true">MC</div>
                 <div>
-                    <p class="eyebrow">AWS · AP-SOUTHEAST-2</p>
-                    <h1>BlockOps</h1>
+                    <p class="eyebrow">Minecraft control panel</p>
+                    <h1>Miners Server</h1>
                     <p class="hero-copy">A small control room for the Forge and Vanilla worlds.</p>
                 </div>
             </div>
