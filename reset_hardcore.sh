@@ -28,7 +28,7 @@ if [[ -n "${sid}" ]] && screen -ls | grep -q "${sid}\."; then
     fi
     sleep 1
   done
-  screen -S "${sid}" -X quit 2>/dev/null || true
+  screen -S "${sid}" -X quit >/dev/null 2>&1 || true
 fi
 
 : > "${SCREEN_ID_FILE}"
@@ -38,6 +38,10 @@ sudo -n rm -rf -- \
   "${SERVER_DIR}/world" \
   "${SERVER_DIR}/world_nether" \
   "${SERVER_DIR}/world_the_end"
+
+# Older launches ran Java as root. Repair any remaining Hardcore-only files
+# before the replacement server starts as ubuntu.
+sudo -n chown -R ubuntu:ubuntu -- "${SERVER_DIR}"
 
 start_result="$("${SERVER_DIR}/start_hardcore.sh")"
 if [[ "${start_result}" == started:* ]]; then
