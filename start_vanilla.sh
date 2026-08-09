@@ -21,7 +21,7 @@ if [[ -s "${SCREEN_ID_FILE}" ]]; then
   fi
 fi
 
-screen -L -Logfile "${LOG_FILE}" -dmS "${SCREEN_NAME}" bash -lc "cd ${SERVER_DIR} && sudo -n java -Xmx6096M -Xms6096M -jar server.jar nogui"
+screen -L -Logfile "${LOG_FILE}" -dmS "${SCREEN_NAME}" bash -lc "cd ${SERVER_DIR} && sudo -n ${SERVER_DIR}/java -Xmx6096M -Xms6096M -jar server.jar nogui"
 
 sid_full=""
 for _ in {1..5}; do

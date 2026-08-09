@@ -1,11 +1,684 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="en" data-theme="dark">
 
 <head>
-    <title>Minecraft Server Control</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#0d1511">
+    <title>BlockOps — Minecraft Server Panel</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <style>
+        :root {
+            color-scheme: dark;
+            --bg: #09100c;
+            --bg-deep: #050806;
+            --panel: #152019;
+            --panel-raised: #1d2b21;
+            --panel-soft: #111a15;
+            --line: #3d5244;
+            --line-bright: #65816d;
+            --text: #f4f7ef;
+            --muted: #aab8aa;
+            --grass: #63b547;
+            --grass-dark: #2f712c;
+            --grass-light: #8ed06d;
+            --dirt: #78523a;
+            --dirt-dark: #4a3022;
+            --stone: #84918a;
+            --danger: #d95550;
+            --danger-dark: #812f30;
+            --gold: #e6b94d;
+            --gold-dark: #8c6125;
+            --water: #4d9fd4;
+            --shadow: rgba(0, 0, 0, .42);
+            --focus: #e9d86b;
+        }
+
+        html[data-theme="light"] {
+            color-scheme: light;
+            --bg: #dcead8;
+            --bg-deep: #c3d8bd;
+            --panel: #f8fbf5;
+            --panel-raised: #ffffff;
+            --panel-soft: #edf4e9;
+            --line: #71846f;
+            --line-bright: #4d654d;
+            --text: #172019;
+            --muted: #526153;
+            --grass: #4f9d3b;
+            --grass-dark: #2e6a2c;
+            --grass-light: #75bc59;
+            --dirt: #966b4b;
+            --dirt-dark: #68472f;
+            --stone: #64726b;
+            --danger: #c74642;
+            --danger-dark: #842d2d;
+            --gold: #d7a93d;
+            --gold-dark: #855b21;
+            --water: #377fae;
+            --shadow: rgba(39, 58, 42, .24);
+            --focus: #755d00;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            min-height: 100vh;
+            margin: 0;
+            color: var(--text);
+            background-color: var(--bg);
+            background-image:
+                linear-gradient(rgba(255, 255, 255, .025) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, .025) 1px, transparent 1px),
+                linear-gradient(180deg, var(--bg) 0%, var(--bg-deep) 100%);
+            background-size: 24px 24px, 24px 24px, 100% 100%;
+            font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            transition: color .2s ease, background-color .2s ease;
+        }
+
+        button,
+        summary {
+            font: inherit;
+        }
+
+        .shell {
+            width: min(1120px, calc(100% - 32px));
+            margin: 0 auto;
+            padding: 32px 0 52px;
+        }
+
+        .hero,
+        .mc-panel,
+        .server-card,
+        .connection-panel {
+            position: relative;
+            border: 2px solid var(--line);
+            background: var(--panel);
+            box-shadow: 0 7px 0 var(--shadow);
+        }
+
+        .hero::before,
+        .server-card::before,
+        .mc-panel::before {
+            position: absolute;
+            inset: -2px -2px auto;
+            height: 7px;
+            content: "";
+            border: 2px solid var(--grass-dark);
+            border-bottom: 0;
+            background: var(--grass);
+        }
+
+        .hero {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 24px;
+            overflow: hidden;
+            padding: 30px;
+            background:
+                linear-gradient(135deg, color-mix(in srgb, var(--panel-raised) 92%, var(--grass) 8%), var(--panel));
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 18px;
+        }
+
+        .block-logo {
+            display: grid;
+            width: 64px;
+            height: 64px;
+            flex: 0 0 64px;
+            place-items: center;
+            border: 3px solid #2f1e15;
+            color: #fff;
+            background:
+                linear-gradient(180deg, var(--grass) 0 24%, transparent 24%),
+                repeating-linear-gradient(45deg, var(--dirt) 0 9px, var(--dirt-dark) 9px 18px);
+            box-shadow: inset 0 0 0 3px rgba(255, 255, 255, .08), 5px 5px 0 var(--shadow);
+            font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+            font-size: 20px;
+            font-weight: 900;
+            letter-spacing: -2px;
+            image-rendering: pixelated;
+        }
+
+        .eyebrow,
+        .card-kicker,
+        .label,
+        .last-checked {
+            margin: 0;
+            color: var(--muted);
+            font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+            font-size: .75rem;
+            font-weight: 800;
+            letter-spacing: .12em;
+            text-transform: uppercase;
+        }
+
+        h1,
+        h2,
+        h3,
+        p {
+            margin-top: 0;
+        }
+
+        h1 {
+            margin-bottom: 5px;
+            font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+            font-size: clamp(1.9rem, 5vw, 3.4rem);
+            font-weight: 950;
+            letter-spacing: -.07em;
+            line-height: .98;
+            text-shadow: 3px 3px 0 var(--shadow);
+        }
+
+        .hero-copy {
+            max-width: 620px;
+            margin: 0;
+            color: var(--muted);
+        }
+
+        .theme-toggle {
+            display: inline-flex;
+            min-width: 132px;
+            align-items: center;
+            justify-content: center;
+            gap: 9px;
+            padding: 11px 14px;
+            border: 2px solid var(--line-bright);
+            color: var(--text);
+            background: var(--panel-soft);
+            box-shadow: 0 4px 0 var(--shadow);
+            font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+            font-weight: 800;
+            cursor: pointer;
+        }
+
+        .theme-toggle:hover {
+            border-color: var(--grass-light);
+        }
+
+        .theme-icon {
+            font-size: 1.1rem;
+        }
+
+        .mc-panel {
+            margin-top: 24px;
+            padding: 24px;
+        }
+
+        .host-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1.2fr) minmax(260px, .8fr);
+            gap: 24px;
+            align-items: center;
+        }
+
+        .host-title,
+        .server-title-row,
+        .connection-row,
+        .version-heading {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        .host-title h2,
+        .server-title-row h2 {
+            margin: 4px 0 0;
+            font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+            font-weight: 900;
+            letter-spacing: -.045em;
+        }
+
+        .status-chip {
+            display: inline-flex;
+            width: fit-content;
+            align-items: center;
+            gap: 8px;
+            margin: 0;
+            padding: 8px 11px;
+            border: 2px solid var(--line);
+            color: var(--muted);
+            background: var(--panel-soft);
+            font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+            font-size: .8rem;
+            font-weight: 900;
+            letter-spacing: .04em;
+            text-transform: uppercase;
+        }
+
+        .status-chip::before {
+            width: 10px;
+            height: 10px;
+            content: "";
+            border: 2px solid currentColor;
+            background: currentColor;
+            box-shadow: 0 0 10px currentColor;
+        }
+
+        .status-running {
+            border-color: var(--grass-dark);
+            color: var(--grass-light);
+        }
+
+        .status-stopped {
+            border-color: var(--danger-dark);
+            color: var(--danger);
+        }
+
+        .status-pending,
+        .status-unknown {
+            border-color: var(--gold-dark);
+            color: var(--gold);
+        }
+
+        .uptime {
+            margin: 12px 0 0;
+            color: var(--muted);
+            font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+        }
+
+        .action-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        .mc-btn {
+            min-height: 48px;
+            padding: 11px 14px;
+            border: 2px solid rgba(0, 0, 0, .42);
+            border-radius: 0;
+            color: #fff;
+            background: var(--stone);
+            box-shadow: inset 0 2px 0 rgba(255, 255, 255, .16), 0 5px 0 rgba(0, 0, 0, .32);
+            font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+            font-size: .84rem;
+            font-weight: 900;
+            letter-spacing: .025em;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: transform .1s ease, filter .1s ease, opacity .1s ease;
+        }
+
+        .mc-btn:hover:not(:disabled) {
+            filter: brightness(1.12);
+            transform: translateY(-2px);
+        }
+
+        .mc-btn:active:not(:disabled) {
+            box-shadow: inset 0 2px 0 rgba(255, 255, 255, .12), 0 2px 0 rgba(0, 0, 0, .32);
+            transform: translateY(3px);
+        }
+
+        .mc-btn:disabled {
+            cursor: not-allowed;
+            filter: grayscale(.65);
+            opacity: .42;
+        }
+
+        .mc-btn:focus-visible,
+        .theme-toggle:focus-visible,
+        summary:focus-visible,
+        .copy-button:focus-visible {
+            outline: 3px solid var(--focus);
+            outline-offset: 3px;
+        }
+
+        .btn-start {
+            background: var(--grass-dark);
+        }
+
+        .btn-stop {
+            background: var(--danger-dark);
+        }
+
+        .btn-update {
+            grid-column: 1 / -1;
+            color: #231b08;
+            background: var(--gold);
+        }
+
+        .server-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 24px;
+            margin-top: 24px;
+        }
+
+        .server-card {
+            min-width: 0;
+            padding: 25px;
+        }
+
+        .server-card.forge::before {
+            border-color: var(--gold-dark);
+            background: var(--gold);
+        }
+
+        .server-card.vanilla::before {
+            border-color: var(--grass-dark);
+            background: var(--grass);
+        }
+
+        .server-title-row {
+            align-items: flex-start;
+            margin-bottom: 22px;
+        }
+
+        .server-title-row h2 {
+            font-size: 1.45rem;
+        }
+
+        .server-description {
+            min-height: 48px;
+            margin-bottom: 22px;
+            color: var(--muted);
+        }
+
+        .version-panel {
+            margin: 18px 0;
+            padding: 16px;
+            border: 2px solid var(--line);
+            background: var(--panel-soft);
+        }
+
+        .version-heading {
+            align-items: flex-end;
+        }
+
+        .version-number {
+            margin: 3px 0 0;
+            color: var(--grass-light);
+            font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+            font-size: 1.7rem;
+            font-weight: 950;
+            letter-spacing: -.05em;
+        }
+
+        .version-latest {
+            color: var(--muted);
+            font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+            font-size: .78rem;
+            text-align: right;
+        }
+
+        .update-message {
+            min-height: 22px;
+            margin: 12px 0 0;
+            color: var(--muted);
+            font-size: .88rem;
+        }
+
+        .release-feed {
+            margin: 18px 0 22px;
+            border: 2px solid var(--line);
+            background: var(--panel-soft);
+        }
+
+        .release-feed summary {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 14px 16px;
+            list-style: none;
+            cursor: pointer;
+            font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+            font-size: .82rem;
+            font-weight: 900;
+            text-transform: uppercase;
+        }
+
+        .release-feed summary::-webkit-details-marker {
+            display: none;
+        }
+
+        .release-feed summary::after {
+            content: "+";
+            color: var(--grass-light);
+            font-size: 1.2rem;
+        }
+
+        .release-feed[open] summary::after {
+            content: "−";
+        }
+
+        .release-list {
+            display: grid;
+            max-height: 310px;
+            margin: 0;
+            padding: 0;
+            overflow-y: auto;
+            border-top: 2px solid var(--line);
+            list-style: none;
+        }
+
+        .release-item {
+            display: grid;
+            grid-template-columns: minmax(80px, .65fr) minmax(130px, 1fr) auto;
+            gap: 12px;
+            align-items: center;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--line);
+        }
+
+        .release-item:last-child {
+            border-bottom: 0;
+        }
+
+        .release-name {
+            font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+            font-weight: 950;
+        }
+
+        .release-date {
+            color: var(--muted);
+            font-size: .8rem;
+        }
+
+        .release-tags {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            gap: 5px;
+        }
+
+        .mini-tag {
+            padding: 3px 6px;
+            border: 1px solid var(--line-bright);
+            color: var(--muted);
+            font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+            font-size: .63rem;
+            font-weight: 900;
+            text-transform: uppercase;
+        }
+
+        .mini-tag.latest,
+        .mini-tag.installed {
+            border-color: var(--grass-dark);
+            color: var(--grass-light);
+        }
+
+        .release-footer {
+            margin: 0;
+            padding: 10px 16px;
+            border-top: 1px solid var(--line);
+            color: var(--muted);
+            font-size: .75rem;
+        }
+
+        .release-footer a {
+            color: var(--grass-light);
+        }
+
+        .connection-panel {
+            margin-top: 24px;
+            padding: 22px 24px;
+            background:
+                linear-gradient(90deg, color-mix(in srgb, var(--panel) 88%, var(--water) 12%), var(--panel));
+        }
+
+        .connection-address {
+            margin: 5px 0 0;
+            overflow-wrap: anywhere;
+            color: var(--text);
+            font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+            font-size: clamp(1rem, 3.3vw, 1.4rem);
+            font-weight: 950;
+        }
+
+        .copy-button {
+            padding: 9px 12px;
+            border: 2px solid var(--line-bright);
+            color: var(--text);
+            background: var(--panel-soft);
+            font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+            font-size: .76rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            cursor: pointer;
+        }
+
+        .dashboard-footer {
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+            margin-top: 22px;
+            color: var(--muted);
+            font-size: .78rem;
+        }
+
+        .dashboard-footer p {
+            margin: 0;
+        }
+
+        .toast-message {
+            position: fixed;
+            z-index: 1000;
+            right: 22px;
+            bottom: 22px;
+            width: min(390px, calc(100% - 44px));
+            padding: 15px 17px;
+            border: 2px solid var(--line-bright);
+            color: var(--text);
+            background: var(--panel-raised);
+            box-shadow: 0 7px 0 var(--shadow);
+            font-weight: 750;
+            transform: translateY(140%);
+            transition: transform .18s ease;
+        }
+
+        .toast-message.visible {
+            transform: translateY(0);
+        }
+
+        .toast-message.success {
+            border-color: var(--grass);
+        }
+
+        .toast-message.error {
+            border-color: var(--danger);
+        }
+
+        @media (max-width: 780px) {
+            .shell {
+                width: min(100% - 20px, 680px);
+                padding-top: 18px;
+            }
+
+            .hero,
+            .host-grid,
+            .server-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .hero {
+                align-items: flex-start;
+                flex-direction: column;
+                padding: 24px;
+            }
+
+            .theme-toggle {
+                width: 100%;
+            }
+
+            .server-grid {
+                display: grid;
+            }
+
+            .connection-row,
+            .dashboard-footer {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+
+            .copy-button {
+                width: 100%;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .block-logo {
+                width: 52px;
+                height: 52px;
+                flex-basis: 52px;
+            }
+
+            .hero,
+            .mc-panel,
+            .server-card,
+            .connection-panel {
+                padding: 20px;
+            }
+
+            .host-title,
+            .server-title-row,
+            .version-heading {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+
+            .action-grid,
+            .release-item {
+                grid-template-columns: 1fr;
+            }
+
+            .release-tags {
+                justify-content: flex-start;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *,
+            *::before,
+            *::after {
+                scroll-behavior: auto !important;
+                transition-duration: .01ms !important;
+            }
+        }
+    </style>
     <script>
-        const apiBaseUrl = "https://w6b144nh04.execute-api.ap-southeast-2.amazonaws.com"; // Replace with your API Gateway URL
+        const apiBaseUrl = "https://w6b144nh04.execute-api.ap-southeast-2.amazonaws.com";
+        const mojangManifestUrl = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json";
+        const vanillaAddress = "3.104.205.239:25565";
+        let refreshInFlight = null;
+        let toastTimer = null;
+        let releaseCache = null;
+
+        try {
+            const savedTheme = localStorage.getItem("mc-panel-theme");
+            document.documentElement.dataset.theme = savedTheme === "light" ? "light" : "dark";
+        } catch (error) {
+            document.documentElement.dataset.theme = "dark";
+        }
 
         async function parseApiResponse(response) {
             const text = await response.text();
@@ -16,25 +689,60 @@
             }
         }
 
+        function updateThemeButton() {
+            const isDark = document.documentElement.dataset.theme === "dark";
+            document.getElementById("themeIcon").textContent = isDark ? "☀" : "☾";
+            document.getElementById("themeLabel").textContent = isDark ? "Light mode" : "Dark mode";
+            document.getElementById("themeToggle").setAttribute("aria-pressed", String(!isDark));
+        }
+
+        function toggleTheme() {
+            const nextTheme = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+            document.documentElement.dataset.theme = nextTheme;
+            try {
+                localStorage.setItem("mc-panel-theme", nextTheme);
+            } catch (error) {
+                console.warn("Theme preference could not be saved:", error);
+            }
+            updateThemeButton();
+        }
+
+        function showToast(message, type = "success") {
+            const toast = document.getElementById("toastMessage");
+            toast.textContent = message;
+            toast.className = `toast-message visible ${type}`;
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => {
+                toast.classList.remove("visible");
+            }, 5500);
+        }
+
+        function setStatus(id, label, state, detail = "") {
+            const status = document.getElementById(id);
+            const normalizedState = ["running", "stopped", "pending"].includes(state) ? state : "unknown";
+            status.className = `status-chip status-${normalizedState}`;
+            status.textContent = `${label}: ${normalizedState.toUpperCase()}${detail}`;
+        }
+
         async function checkEC2Status() {
             try {
-                const response = await fetch(`${apiBaseUrl}/status`, { method: "GET" });
+                const response = await fetch(`${apiBaseUrl}/status`, { method: "GET", cache: "no-store" });
                 const result = await parseApiResponse(response);
+                if (!response.ok || !result || typeof result !== "object") {
+                    throw new Error(result?.message || "Unable to read EC2 status.");
+                }
+
                 const ec2Status = (result.state || "unknown").toLowerCase();
-                const ec2Uptime = result.uptime_seconds;
+                setStatus("ec2Status", "EC2", ec2Status);
+                document.getElementById("ec2Uptime").textContent = ec2Status === "running"
+                    ? formatUptime(result.uptime_seconds, "Host uptime")
+                    : "Host uptime: --";
 
-                document.getElementById("ec2Status").innerText = `EC2 Status: ${ec2Status.toUpperCase()}`;
-                document.getElementById("ec2Uptime").innerText = ec2Status === "running"
-                    ? formatUptime(ec2Uptime, "EC2 Uptime")
-                    : "EC2 Uptime: --";
-
-                // Enable/Disable buttons based on EC2 state
                 if (ec2Status === "stopped") {
                     document.getElementById("startBtn").disabled = false;
                     document.getElementById("stopBtn").disabled = true;
                     setMinecraftButtonsDisabled(true);
                     setMinecraftStatusStopped();
-                    return;
                 } else if (ec2Status === "running") {
                     document.getElementById("startBtn").disabled = true;
                     document.getElementById("stopBtn").disabled = false;
@@ -45,43 +753,40 @@
                     document.getElementById("startBtn").disabled = true;
                     document.getElementById("stopBtn").disabled = true;
                     setMinecraftButtonsDisabled(true);
-                    setMinecraftStatusStopped();
+                    setMinecraftStatusUnknown();
                 }
             } catch (error) {
                 console.error("Error fetching EC2 status:", error);
-                document.getElementById("ec2Status").innerText = "EC2 Status: Unknown";
+                setStatus("ec2Status", "EC2", "unknown");
+                setMinecraftButtonsDisabled(true);
+                setMinecraftStatusUnknown();
             }
         }
 
         async function sendRequest(endpoint, method, buttonId) {
             const button = document.getElementById(buttonId);
-            button.disabled = true; // Disable button to prevent multiple clicks
+            const originalLabel = button.textContent;
+            button.disabled = true;
+            button.textContent = "Working...";
 
             try {
                 const response = await fetch(`${apiBaseUrl}${endpoint}`, {
-                    method: method,
+                    method,
                     headers: { "Content-Type": "application/json" }
                 });
-
                 const result = await parseApiResponse(response);
-                const message = (result && typeof result === "object")
+                const message = result && typeof result === "object"
                     ? (result.message || result.error || JSON.stringify(result))
                     : result;
-                if (response.ok) {
-                    alert(message || "Operation successful");
-                } else {
-                    alert(message ? `Error: ${message}` : "Error processing request.");
-                }
-
-                setTimeout(checkEC2Status, 3000); // Refresh EC2 status after action
-                setTimeout(checkMinecraftStatuses, 3000);
+                if (!response.ok) throw new Error(message || "Request failed.");
+                showToast(message || "Operation accepted.");
             } catch (error) {
-                console.error("Error:", error);
-                alert("Error processing request.");
+                console.error("Server action failed:", error);
+                showToast(error.message || "Unable to process the request.", "error");
             } finally {
-                setTimeout(() => {
-                    button.disabled = false; // Re-enable button after delay
-                }, 5000);
+                button.textContent = originalLabel;
+                setTimeout(refreshDashboard, 2500);
+                setTimeout(refreshDashboard, 10000);
             }
         }
 
@@ -107,15 +812,22 @@
             const updateButton = document.getElementById("updateVanillaBtn");
 
             try {
-                const response = await fetch(`${apiBaseUrl}/mc/update/vanilla/status`, { method: "GET" });
+                const response = await fetch(`${apiBaseUrl}/mc/update/vanilla/status`, {
+                    method: "GET",
+                    cache: "no-store"
+                });
                 const result = await parseApiResponse(response);
                 if (!response.ok || !result || typeof result !== "object") {
-                    const message = result && result.error ? result.error : "Unable to check for a vanilla update.";
-                    throw new Error(message);
+                    throw new Error(result?.error || "Unable to check for a vanilla update.");
                 }
 
-                versionStatus.innerText = `Vanilla version: ${result.installed_version || "unknown"} (latest: ${result.latest_version || "unknown"})`;
-                updateMessage.innerText = result.message || "";
+                document.getElementById("vanillaInstalledVersion").textContent = result.installed_version || "unknown";
+                document.getElementById("vanillaLatestVersion").textContent = `Latest ${result.latest_version || "unknown"}`;
+                document.getElementById("vanillaReleaseDate").textContent = formatReleaseDate(result.release_time);
+                versionStatus.textContent = result.update_available
+                    ? `Vanilla ${result.latest_version} is ready to install.`
+                    : `Vanilla ${result.installed_version} is the latest stable release.`;
+                updateMessage.textContent = result.message || "";
 
                 const updateInProgress = ["checking", "scheduled", "updating"].includes(result.update_state);
                 const canUpdate = result.update_available && result.updates_enabled && !updateInProgress;
@@ -123,19 +835,82 @@
                 updateButton.disabled = !canUpdate;
 
                 if (result.update_available && !result.updates_enabled) {
-                    updateMessage.innerText = "An update is available. Email notification confirmation is required before updates can be enabled.";
+                    updateMessage.textContent = "An update is available, but automated updates are paused.";
                 } else if (!result.update_available) {
-                    updateMessage.innerText = result.message || "Vanilla is up to date.";
+                    updateMessage.textContent = result.message || "Vanilla is already current.";
                 }
+
+                loadRecentVanillaReleases(result).catch(error => {
+                    console.error("Unable to load Mojang release history:", error);
+                    renderRecentReleases([], result);
+                });
                 return result;
             } catch (error) {
                 console.error("Error checking vanilla update status:", error);
-                versionStatus.innerText = "Vanilla version: Update check unavailable";
-                updateMessage.innerText = error.message;
+                versionStatus.textContent = "Version check unavailable.";
+                updateMessage.textContent = error.message;
                 updateButton.hidden = true;
                 updateButton.disabled = true;
                 return null;
             }
+        }
+
+        async function loadRecentVanillaReleases(status) {
+            const now = Date.now();
+            if (!releaseCache || now - releaseCache.loadedAt > 120000) {
+                const response = await fetch(mojangManifestUrl, { cache: "no-store" });
+                if (!response.ok) throw new Error("Mojang release manifest is unavailable.");
+                const manifest = await response.json();
+                releaseCache = {
+                    loadedAt: now,
+                    releases: manifest.versions
+                        .filter(version => version.type === "release")
+                        .slice(0, 10)
+                };
+            }
+            renderRecentReleases(releaseCache.releases, status);
+        }
+
+        function renderRecentReleases(releases, status) {
+            const list = document.getElementById("vanillaReleaseList");
+            list.replaceChildren();
+
+            const visibleReleases = releases.length ? releases : [{
+                id: status.latest_version,
+                releaseTime: status.release_time
+            }];
+
+            visibleReleases.forEach(release => {
+                const item = document.createElement("li");
+                item.className = "release-item";
+
+                const name = document.createElement("span");
+                name.className = "release-name";
+                name.textContent = release.id;
+
+                const date = document.createElement("time");
+                date.className = "release-date";
+                date.dateTime = release.releaseTime || "";
+                date.textContent = formatReleaseDate(release.releaseTime);
+
+                const tags = document.createElement("span");
+                tags.className = "release-tags";
+                if (release.id === status.latest_version) tags.append(createReleaseTag("Latest", "latest"));
+                if (release.id === status.installed_version) tags.append(createReleaseTag("Installed", "installed"));
+                if (!tags.children.length) tags.append(createReleaseTag("Stable"));
+
+                item.append(name, date, tags);
+                list.append(item);
+            });
+
+            document.getElementById("releaseCount").textContent = `${visibleReleases.length} stable releases`;
+        }
+
+        function createReleaseTag(label, className = "") {
+            const tag = document.createElement("span");
+            tag.className = `mini-tag ${className}`.trim();
+            tag.textContent = label;
+            return tag;
         }
 
         async function pollVanillaUpdateStatus(attemptsRemaining = 12) {
@@ -148,11 +923,10 @@
         async function updateVanillaServer() {
             const updateButton = document.getElementById("updateVanillaBtn");
             const updateMessage = document.getElementById("vanillaUpdateMessage");
-            const confirmed = confirm("Update the vanilla server? The world will be backed up to S3 before the server software changes.");
-            if (!confirmed) return;
+            if (!confirm("Update vanilla? The world will be backed up to S3 before server software changes.")) return;
 
             updateButton.disabled = true;
-            updateMessage.innerText = "Requesting vanilla update...";
+            updateMessage.textContent = "Requesting vanilla update...";
             try {
                 const response = await fetch(`${apiBaseUrl}/mc/update/vanilla`, {
                     method: "POST",
@@ -163,27 +937,31 @@
                     ? (result.message || result.error || JSON.stringify(result))
                     : result;
                 if (!response.ok) throw new Error(message || "Unable to request the vanilla update.");
-
-                updateMessage.innerText = message || "Vanilla update accepted.";
-                alert(message || "Vanilla update accepted.");
+                updateMessage.textContent = message || "Vanilla update accepted.";
+                showToast(message || "Vanilla update accepted.");
             } catch (error) {
                 console.error("Error requesting vanilla update:", error);
-                updateMessage.innerText = error.message;
-                alert(`Error: ${error.message}`);
+                updateMessage.textContent = error.message;
+                showToast(error.message, "error");
             } finally {
                 setTimeout(pollVanillaUpdateStatus, 3000);
             }
         }
 
         async function fetchMinecraftStatus(serverType) {
-            const response = await fetch(`${apiBaseUrl}/mc/status/${serverType}`, { method: "GET" });
-            return parseApiResponse(response);
+            const response = await fetch(`${apiBaseUrl}/mc/status/${serverType}`, {
+                method: "GET",
+                cache: "no-store"
+            });
+            const result = await parseApiResponse(response);
+            if (!response.ok || !result || typeof result !== "object") {
+                throw new Error(result?.message || `Unable to read ${serverType} status.`);
+            }
+            return result;
         }
 
         function formatUptime(seconds, label) {
-            if (seconds === null || seconds === undefined) {
-                return `${label}: --`;
-            }
+            if (seconds === null || seconds === undefined) return `${label}: --`;
             const total = Number(seconds);
             const days = Math.floor(total / 86400);
             const hours = Math.floor((total % 86400) / 3600);
@@ -197,24 +975,33 @@
             return `${label}: ${parts.join(" ")}`;
         }
 
+        function formatReleaseDate(value) {
+            if (!value) return "Release date unavailable";
+            const date = new Date(value);
+            if (Number.isNaN(date.getTime())) return "Release date unavailable";
+            return new Intl.DateTimeFormat("en", {
+                year: "numeric",
+                month: "short",
+                day: "numeric"
+            }).format(date);
+        }
+
         async function updateMinecraftStatus(serverType, statusId) {
             try {
                 const result = await fetchMinecraftStatus(serverType);
-                const isRunning = result.running;
-                const statusEl = document.getElementById(statusId);
-                const screenSuffix = result.screen_id ? ` (screen ${result.screen_id})` : "";
-                statusEl.innerText = `${serverType.toUpperCase()} Status: ${isRunning ? "RUNNING" : "STOPPED"}${screenSuffix}`;
+                const detail = result.screen_id ? ` · SCREEN ${result.screen_id}` : "";
+                setStatus(statusId, serverType, result.running ? "running" : "stopped", detail);
 
                 if (serverType === "forge") {
-                    document.getElementById("startForgeBtn").disabled = isRunning;
-                    document.getElementById("stopForgeBtn").disabled = !isRunning;
-                } else if (serverType === "vanilla") {
-                    document.getElementById("startVanillaBtn").disabled = isRunning;
-                    document.getElementById("stopVanillaBtn").disabled = !isRunning;
+                    document.getElementById("startForgeBtn").disabled = result.running;
+                    document.getElementById("stopForgeBtn").disabled = !result.running;
+                } else {
+                    document.getElementById("startVanillaBtn").disabled = result.running;
+                    document.getElementById("stopVanillaBtn").disabled = !result.running;
                 }
             } catch (error) {
-                console.error("Error fetching Minecraft status:", error);
-                document.getElementById(statusId).innerText = `${serverType.toUpperCase()} Status: Unknown`;
+                console.error(`Error fetching ${serverType} status:`, error);
+                setStatus(statusId, serverType, "unknown");
             }
         }
 
@@ -226,10 +1013,8 @@
         }
 
         function setMinecraftButtonsDisabled(isDisabled) {
-            document.getElementById("startForgeBtn").disabled = isDisabled;
-            document.getElementById("stopForgeBtn").disabled = isDisabled;
-            document.getElementById("startVanillaBtn").disabled = isDisabled;
-            document.getElementById("stopVanillaBtn").disabled = isDisabled;
+            ["startForgeBtn", "stopForgeBtn", "startVanillaBtn", "stopVanillaBtn"]
+                .forEach(id => document.getElementById(id).disabled = isDisabled);
         }
 
         function setMinecraftStartButtonsEnabled() {
@@ -238,60 +1023,159 @@
         }
 
         function setMinecraftStatusStopped() {
-            document.getElementById("forgeStatus").innerText = "FORGE Status: STOPPED";
-            document.getElementById("vanillaStatus").innerText = "VANILLA Status: STOPPED";
+            setStatus("forgeStatus", "Forge", "stopped");
+            setStatus("vanillaStatus", "Vanilla", "stopped");
         }
 
-        window.onload = async () => {
-            await Promise.all([
-                checkEC2Status(),
-                checkVanillaUpdateStatus()
-            ]);
-        };
+        function setMinecraftStatusUnknown() {
+            setStatus("forgeStatus", "Forge", "unknown");
+            setStatus("vanillaStatus", "Vanilla", "unknown");
+        }
+
+        async function refreshDashboard() {
+            if (refreshInFlight) return refreshInFlight;
+            refreshInFlight = Promise.all([checkEC2Status(), checkVanillaUpdateStatus()])
+                .finally(() => {
+                    document.getElementById("lastChecked").textContent = `Last checked ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+                    refreshInFlight = null;
+                });
+            return refreshInFlight;
+        }
+
+        async function copyServerAddress() {
+            try {
+                await navigator.clipboard.writeText(vanillaAddress);
+                showToast("Vanilla server address copied.");
+            } catch (error) {
+                showToast(`Connect with ${vanillaAddress}`, "error");
+            }
+        }
+
+        window.addEventListener("load", async () => {
+            updateThemeButton();
+            await refreshDashboard();
+            setInterval(refreshDashboard, 30000);
+        });
     </script>
 </head>
 
 <body>
-    <div class="container mt-5">
-        <h1 class="text-center">Minecraft Server Control</h1>
-        <h3 class="text-center" id="ec2Status">EC2 Status: Checking...</h3>
-        <p class="text-center" id="ec2Uptime">EC2 Uptime: --</p>
-        <p class="text-center text-muted">Remember to stop the EC2 server after playing.</p>
-
-        <div class="d-grid gap-3 mt-4">
-            <button id="startBtn" class="btn btn-success" onclick="startServer()" disabled>Start EC2 Server</button>
-            <button id="stopBtn" class="btn btn-danger" onclick="stopServer()" disabled>Stop EC2 Server</button>
-        </div>
-
-        <div class="row mt-5">
-            <div class="col-md-6">
-                <h4>Forge Server</h4>
-                <p id="forgeStatus">FORGE Status: Checking...</p>
-                <div class="d-grid gap-2">
-                    <button id="startForgeBtn" class="btn btn-warning"
-                        onclick="startMinecraftServer('forge', 'startForgeBtn')" disabled>Start Forge Server</button>
-                    <button id="stopForgeBtn" class="btn btn-outline-danger"
-                        onclick="stopMinecraftServer('forge', 'stopForgeBtn')" disabled>Stop Forge Server</button>
+    <main class="shell">
+        <header class="hero">
+            <div class="brand">
+                <div class="block-logo" aria-hidden="true">MC</div>
+                <div>
+                    <p class="eyebrow">AWS · AP-SOUTHEAST-2</p>
+                    <h1>BlockOps</h1>
+                    <p class="hero-copy">A small control room for the Forge and Vanilla worlds.</p>
                 </div>
             </div>
-            <div class="col-md-6">
-                <h4>Vanilla Server</h4>
-                <p id="vanillaStatus">VANILLA Status: Checking...</p>
-                <p id="vanillaVersionStatus">Vanilla version: Checking...</p>
-                <p id="vanillaUpdateMessage" class="small text-muted" aria-live="polite"></p>
-                <div class="d-grid gap-2">
-                    <button id="startVanillaBtn" class="btn btn-warning"
-                        onclick="startMinecraftServer('vanilla', 'startVanillaBtn')" disabled>Start Vanilla
-                        Server</button>
-                    <button id="stopVanillaBtn" class="btn btn-outline-danger"
-                        onclick="stopMinecraftServer('vanilla', 'stopVanillaBtn')" disabled>Stop Vanilla Server</button>
-                    <button id="updateVanillaBtn" class="btn btn-primary" onclick="updateVanillaServer()" hidden
-                        disabled>Update Vanilla Server</button>
+            <button id="themeToggle" class="theme-toggle" type="button" onclick="toggleTheme()" aria-pressed="false">
+                <span id="themeIcon" class="theme-icon" aria-hidden="true">☀</span>
+                <span id="themeLabel">Light mode</span>
+            </button>
+        </header>
+
+        <section class="mc-panel" aria-labelledby="hostHeading">
+            <div class="host-grid">
+                <div>
+                    <div class="host-title">
+                        <div>
+                            <p class="card-kicker">Realm host</p>
+                            <h2 id="hostHeading">EC2 Instance</h2>
+                        </div>
+                        <p id="ec2Status" class="status-chip status-pending" aria-live="polite">EC2: CHECKING</p>
+                    </div>
+                    <p id="ec2Uptime" class="uptime">Host uptime: --</p>
+                </div>
+                <div class="action-grid">
+                    <button id="startBtn" class="mc-btn btn-start" type="button" onclick="startServer()" disabled>Start EC2</button>
+                    <button id="stopBtn" class="mc-btn btn-stop" type="button" onclick="stopServer()" disabled>Stop EC2</button>
                 </div>
             </div>
-        </div>
+        </section>
 
-    </div>
+        <section class="server-grid" aria-label="Minecraft servers">
+            <article class="server-card forge">
+                <div class="server-title-row">
+                    <div>
+                        <p class="card-kicker">Modded · Java</p>
+                        <h2>Forge 1.20.1</h2>
+                    </div>
+                    <p id="forgeStatus" class="status-chip status-pending" aria-live="polite">FORGE: CHECKING</p>
+                </div>
+                <p class="server-description">The modded world. Start only one Minecraft server at a time to keep memory available.</p>
+                <div class="action-grid">
+                    <button id="startForgeBtn" class="mc-btn btn-start" type="button"
+                        onclick="startMinecraftServer('forge', 'startForgeBtn')" disabled>Start Forge</button>
+                    <button id="stopForgeBtn" class="mc-btn btn-stop" type="button"
+                        onclick="stopMinecraftServer('forge', 'stopForgeBtn')" disabled>Stop Forge</button>
+                </div>
+            </article>
+
+            <article class="server-card vanilla">
+                <div class="server-title-row">
+                    <div>
+                        <p class="card-kicker">Official · Stable</p>
+                        <h2>Vanilla Server</h2>
+                    </div>
+                    <p id="vanillaStatus" class="status-chip status-pending" aria-live="polite">VANILLA: CHECKING</p>
+                </div>
+
+                <div class="version-panel">
+                    <div class="version-heading">
+                        <div>
+                            <p class="label">Installed version</p>
+                            <p id="vanillaInstalledVersion" class="version-number">--</p>
+                        </div>
+                        <div class="version-latest">
+                            <div id="vanillaLatestVersion">Latest --</div>
+                            <div id="vanillaReleaseDate">Checking Mojang...</div>
+                        </div>
+                    </div>
+                    <p id="vanillaVersionStatus" class="update-message">Checking the stable release channel...</p>
+                    <p id="vanillaUpdateMessage" class="update-message" aria-live="polite"></p>
+                </div>
+
+                <details class="release-feed">
+                    <summary>
+                        <span>Recent Vanilla Releases</span>
+                        <span id="releaseCount" class="label">Loading...</span>
+                    </summary>
+                    <ol id="vanillaReleaseList" class="release-list" aria-label="Recent stable Minecraft Java releases"></ol>
+                    <p class="release-footer">Stable versions from Mojang's live manifest. Snapshots are excluded. <a
+                            href="https://feedback.minecraft.net/hc/en-us/sections/360001186971-Release-Changelogs"
+                            target="_blank" rel="noreferrer">Release changelogs ↗</a></p>
+                </details>
+
+                <div class="action-grid">
+                    <button id="startVanillaBtn" class="mc-btn btn-start" type="button"
+                        onclick="startMinecraftServer('vanilla', 'startVanillaBtn')" disabled>Start Vanilla</button>
+                    <button id="stopVanillaBtn" class="mc-btn btn-stop" type="button"
+                        onclick="stopMinecraftServer('vanilla', 'stopVanillaBtn')" disabled>Stop Vanilla</button>
+                    <button id="updateVanillaBtn" class="mc-btn btn-update" type="button" onclick="updateVanillaServer()"
+                        hidden disabled>Back Up &amp; Update Vanilla</button>
+                </div>
+            </article>
+        </section>
+
+        <section class="connection-panel" aria-labelledby="connectionHeading">
+            <div class="connection-row">
+                <div>
+                    <p class="card-kicker">Direct connect · Vanilla</p>
+                    <h2 id="connectionHeading" class="connection-address">3.104.205.239:25565</h2>
+                </div>
+                <button class="copy-button" type="button" onclick="copyServerAddress()">Copy address</button>
+            </div>
+        </section>
+
+        <footer class="dashboard-footer">
+            <p>Remember to stop EC2 when the worlds are quiet.</p>
+            <p id="lastChecked" class="last-checked">Waiting for first check</p>
+        </footer>
+    </main>
+
+    <div id="toastMessage" class="toast-message" role="status" aria-live="polite"></div>
 </body>
 
 </html>
