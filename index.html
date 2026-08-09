@@ -794,6 +794,7 @@
         let sessionExpiryTimer = null;
         let toastTimer = null;
         let releaseCache = null;
+        let minecraftActionInFlight = false;
         let minecraftRunningState = {
             forge: false,
             vanilla: false,
@@ -1080,12 +1081,19 @@
         }
 
         async function startMinecraftServer(serverType, buttonId) {
+            if (minecraftActionInFlight) return;
+
             const activeServerTypes = Object.entries(minecraftRunningState)
                 .filter(([activeType, isRunning]) => activeType !== serverType && isRunning)
                 .map(([activeType]) => activeType);
 
             if (activeServerTypes.length === 0) {
-                await sendRequest(`/mc/start/${serverType}`, "POST", buttonId);
+                minecraftActionInFlight = true;
+                try {
+                    await sendRequest(`/mc/start/${serverType}`, "POST", buttonId);
+                } finally {
+                    minecraftActionInFlight = false;
+                }
                 return;
             }
 
@@ -1096,6 +1104,7 @@
 
             const button = document.getElementById(buttonId);
             const originalLabel = button.textContent;
+            minecraftActionInFlight = true;
             button.disabled = true;
 
             try {
@@ -1112,6 +1121,7 @@
                 console.error(`Unable to switch to ${serverType}:`, error);
                 showToast(error.message || `Unable to switch to ${targetLabel}.`, "error");
             } finally {
+                minecraftActionInFlight = false;
                 button.textContent = originalLabel;
                 setTimeout(refreshDashboard, 2500);
                 setTimeout(refreshDashboard, 10000);
@@ -1119,7 +1129,13 @@
         }
 
         async function stopMinecraftServer(serverType, buttonId) {
-            await sendRequest(`/mc/stop/${serverType}`, "POST", buttonId);
+            if (minecraftActionInFlight) return;
+            minecraftActionInFlight = true;
+            try {
+                await sendRequest(`/mc/stop/${serverType}`, "POST", buttonId);
+            } finally {
+                minecraftActionInFlight = false;
+            }
         }
 
         async function checkVanillaUpdateStatus() {
@@ -1265,10 +1281,12 @@
         }
 
         async function resetHardcoreWorld() {
+            if (minecraftActionInFlight) return;
             const resetButton = document.getElementById("resetHardcoreBtn");
             const warning = "Permanently delete the Hardcore world with NO BACKUP and immediately create a new world?";
             if (!confirm(warning)) return;
 
+            minecraftActionInFlight = true;
             resetButton.disabled = true;
             resetButton.textContent = "Resetting world...";
             try {
@@ -1287,6 +1305,7 @@
                 console.error("Hardcore reset failed:", error);
                 showToast(error.message || "Unable to reset the Hardcore world.", "error");
             } finally {
+                minecraftActionInFlight = false;
                 resetButton.textContent = "Reset & Start New World";
                 setTimeout(refreshDashboard, 2500);
                 setTimeout(refreshDashboard, 10000);
@@ -1362,6 +1381,12 @@
                 vanilla: vanillaRunning,
                 hardcore: hardcoreRunning
             };
+
+            if (minecraftActionInFlight) {
+                setMinecraftButtonsDisabled(true);
+                document.getElementById("hardcoreAvailability").textContent = "A server action is in progress. Controls will unlock when it finishes.";
+                return;
+            }
 
             document.getElementById("startForgeBtn").disabled = forgeRunning;
             document.getElementById("stopForgeBtn").disabled = !forgeRunning;
