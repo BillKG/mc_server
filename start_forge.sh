@@ -21,6 +21,13 @@ if [[ -s "${SCREEN_ID_FILE}" ]]; then
   fi
 fi
 
+for other_server in vanilla hardcore; do
+  if screen -ls | grep -qE "\.${other_server}[[:space:]]"; then
+    echo "failed:stop ${other_server} before starting forge"
+    exit 1
+  fi
+done
+
 screen -L -Logfile "${LOG_FILE}" -dmS "${SCREEN_NAME}" bash -lc "cd ${SERVER_DIR} && ./run.sh"
 
 sid_full=""
