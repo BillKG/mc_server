@@ -5,11 +5,17 @@ SERVER_DIR="/home/ubuntu/forge-1.20.1"
 SCREEN_NAME="forge"
 SCREEN_ID_FILE="${SERVER_DIR}/screen_id.txt"
 LOG_FILE="${SERVER_DIR}/forge_start.log"
+FORGE_JAVA_DIR="/usr/lib/jvm/java-21-openjdk-arm64/bin"
 
 cd "${SERVER_DIR}"
 
 if ! command -v screen >/dev/null 2>&1; then
   echo "failed:screen not installed"
+  exit 1
+fi
+
+if [[ ! -x "${FORGE_JAVA_DIR}/java" ]]; then
+  echo "failed:Forge requires Java 21 at ${FORGE_JAVA_DIR}/java"
   exit 1
 fi
 
@@ -28,7 +34,7 @@ for other_server in vanilla hardcore; do
   fi
 done
 
-screen -L -Logfile "${LOG_FILE}" -dmS "${SCREEN_NAME}" bash -lc "cd ${SERVER_DIR} && ./run.sh"
+screen -L -Logfile "${LOG_FILE}" -dmS "${SCREEN_NAME}" bash -lc "cd ${SERVER_DIR} && PATH=${FORGE_JAVA_DIR}:${PATH} ./run.sh"
 
 sid_full=""
 for _ in {1..5}; do

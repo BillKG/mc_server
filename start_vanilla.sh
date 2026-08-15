@@ -28,7 +28,7 @@ for other_server in forge hardcore; do
   fi
 done
 
-screen -L -Logfile "${LOG_FILE}" -dmS "${SCREEN_NAME}" bash -lc "cd ${SERVER_DIR} && sudo -n ${SERVER_DIR}/java -Xmx6096M -Xms6096M -jar server.jar nogui"
+screen -L -Logfile "${LOG_FILE}" -dmS "${SCREEN_NAME}" bash -lc "cd ${SERVER_DIR} && exec ${SERVER_DIR}/java -Xms4G -Xmx12G -jar server.jar nogui"
 
 sid_full=""
 for _ in {1..5}; do
