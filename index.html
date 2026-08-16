@@ -496,6 +496,105 @@
             color: var(--muted);
         }
 
+        .player-roster {
+            margin: 18px 0 22px;
+            padding: 15px;
+            border: 2px solid var(--line);
+            background: var(--panel-soft);
+        }
+
+        .player-roster[data-running="true"] {
+            border-color: var(--grass-dark);
+        }
+
+        .player-roster-heading,
+        .player-recent-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .player-roster-heading {
+            margin-bottom: 14px;
+        }
+
+        .player-online-count {
+            color: var(--grass-light);
+            font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+            font-size: .78rem;
+            font-weight: 900;
+            text-transform: uppercase;
+        }
+
+        .player-group + .player-group {
+            margin-top: 15px;
+            padding-top: 13px;
+            border-top: 1px solid var(--line);
+        }
+
+        .player-group-label {
+            margin: 0 0 8px;
+            color: var(--muted);
+            font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+            font-size: .72rem;
+            font-weight: 900;
+            letter-spacing: .06em;
+            text-transform: uppercase;
+        }
+
+        .player-online-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            min-height: 27px;
+        }
+
+        .player-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            padding: 5px 8px;
+            border: 1px solid var(--grass-dark);
+            color: var(--text);
+            background: color-mix(in srgb, var(--panel-soft) 82%, var(--grass) 18%);
+            font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+            font-size: .78rem;
+            font-weight: 850;
+        }
+
+        .player-chip::before {
+            width: 7px;
+            height: 7px;
+            content: "";
+            background: var(--grass-light);
+            box-shadow: 0 0 8px var(--grass-light);
+        }
+
+        .player-recent-list {
+            display: grid;
+            gap: 7px;
+            margin: 0;
+            padding: 0;
+            list-style: none;
+        }
+
+        .player-recent-item {
+            color: var(--text);
+            font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+            font-size: .78rem;
+        }
+
+        .player-last-seen,
+        .player-empty {
+            color: var(--muted);
+        }
+
+        .player-empty {
+            margin: 0;
+            font-size: .8rem;
+        }
+
         .version-panel {
             margin: 18px 0;
             padding: 16px;
@@ -1351,15 +1450,113 @@
             }).format(date);
         }
 
+        function formatRelativePlayerTime(player) {
+            let seconds = Number(player?.seconds_ago);
+            if (player?.last_seen_at) {
+                const lastSeen = new Date(player.last_seen_at);
+                if (!Number.isNaN(lastSeen.getTime())) {
+                    seconds = Math.max(0, Math.floor((Date.now() - lastSeen.getTime()) / 1000));
+                }
+            }
+            if (!Number.isFinite(seconds)) return "time unavailable";
+            if (seconds < 45) return "just now";
+            if (seconds < 3600) {
+                const minutes = Math.max(1, Math.floor(seconds / 60));
+                return `${minutes}m ago`;
+            }
+            if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+            if (seconds < 2592000) return `${Math.floor(seconds / 86400)}d ago`;
+            if (seconds < 31536000) return `${Math.floor(seconds / 2592000)}mo ago`;
+            return `${Math.floor(seconds / 31536000)}y ago`;
+        }
+
+        function appendPlayerEmptyState(container, message, listItem = false) {
+            const empty = document.createElement(listItem ? "li" : "p");
+            empty.className = "player-empty";
+            empty.textContent = message;
+            container.appendChild(empty);
+        }
+
+        function renderPlayerActivity(serverType, result) {
+            const roster = document.getElementById(`${serverType}PlayerRoster`);
+            const count = document.getElementById(`${serverType}OnlineCount`);
+            const onlineList = document.getElementById(`${serverType}OnlinePlayers`);
+            const recentList = document.getElementById(`${serverType}RecentPlayers`);
+            const onlinePlayers = Array.isArray(result.online_players) ? result.online_players : [];
+            const recentPlayers = Array.isArray(result.recent_players) ? result.recent_players : [];
+
+            roster.dataset.running = String(Boolean(result.running));
+            count.textContent = `${onlinePlayers.length} online`;
+            onlineList.replaceChildren();
+            recentList.replaceChildren();
+
+            if (result.player_error) {
+                appendPlayerEmptyState(onlineList, "Player activity unavailable.");
+            } else if (onlinePlayers.length === 0) {
+                appendPlayerEmptyState(onlineList, result.running ? "No players online." : "Server is stopped.");
+            } else {
+                onlinePlayers.forEach(playerName => {
+                    const chip = document.createElement("span");
+                    chip.className = "player-chip";
+                    chip.textContent = playerName;
+                    onlineList.appendChild(chip);
+                });
+            }
+
+            if (recentPlayers.length === 0) {
+                appendPlayerEmptyState(recentList, "No saved player history yet.", true);
+                return;
+            }
+
+            recentPlayers.forEach(player => {
+                const item = document.createElement("li");
+                const name = document.createElement("span");
+                const lastSeen = document.createElement("span");
+                item.className = "player-recent-item";
+                name.textContent = player.name || "Unknown player";
+                lastSeen.className = "player-last-seen";
+                lastSeen.textContent = formatRelativePlayerTime(player);
+                if (player.last_seen_at) {
+                    const exactTime = new Date(player.last_seen_at);
+                    if (!Number.isNaN(exactTime.getTime())) {
+                        lastSeen.title = exactTime.toLocaleString();
+                    }
+                }
+                item.append(name, lastSeen);
+                recentList.appendChild(item);
+            });
+        }
+
+        function setPlayerActivityUnavailable(serverType, message) {
+            const roster = document.getElementById(`${serverType}PlayerRoster`);
+            const count = document.getElementById(`${serverType}OnlineCount`);
+            const onlineList = document.getElementById(`${serverType}OnlinePlayers`);
+            const recentList = document.getElementById(`${serverType}RecentPlayers`);
+            roster.dataset.running = "false";
+            count.textContent = "-- online";
+            onlineList.replaceChildren();
+            recentList.replaceChildren();
+            appendPlayerEmptyState(onlineList, message);
+            appendPlayerEmptyState(recentList, "Player history unavailable.", true);
+        }
+
+        function setAllPlayerActivityUnavailable(message) {
+            ["forge", "vanilla", "hardcore"].forEach(serverType => {
+                setPlayerActivityUnavailable(serverType, message);
+            });
+        }
+
         async function updateMinecraftStatus(serverType, statusId) {
             try {
                 const result = await fetchMinecraftStatus(serverType);
                 const detail = result.screen_id ? ` · SCREEN ${result.screen_id}` : "";
                 setStatus(statusId, serverType, result.running ? "running" : "stopped", detail);
+                renderPlayerActivity(serverType, result);
                 return Boolean(result.running);
             } catch (error) {
                 console.error(`Error fetching ${serverType} status:`, error);
                 setStatus(statusId, serverType, "unknown");
+                setPlayerActivityUnavailable(serverType, "Unable to load player activity.");
                 return null;
             }
         }
@@ -1418,12 +1615,14 @@
             setStatus("forgeStatus", "Forge", "stopped");
             setStatus("vanillaStatus", "Vanilla", "stopped");
             setStatus("hardcoreStatus", "Hardcore", "stopped");
+            setAllPlayerActivityUnavailable("Start EC2 to load player activity.");
         }
 
         function setMinecraftStatusUnknown() {
             setStatus("forgeStatus", "Forge", "unknown");
             setStatus("vanillaStatus", "Vanilla", "unknown");
             setStatus("hardcoreStatus", "Hardcore", "unknown");
+            setAllPlayerActivityUnavailable("Host status is unavailable.");
         }
 
         async function refreshDashboard() {
@@ -1528,6 +1727,24 @@
                     <p id="forgeStatus" class="status-chip status-pending" aria-live="polite">FORGE: CHECKING</p>
                 </div>
                 <p class="server-description">The modded world. Start only one Minecraft server at a time to keep memory available.</p>
+                <section id="forgePlayerRoster" class="player-roster" data-running="false" aria-label="Forge player activity">
+                    <div class="player-roster-heading">
+                        <span class="label">Player activity</span>
+                        <span id="forgeOnlineCount" class="player-online-count">-- online</span>
+                    </div>
+                    <div class="player-group">
+                        <p class="player-group-label">Online now</p>
+                        <div id="forgeOnlinePlayers" class="player-online-list" aria-live="polite">
+                            <p class="player-empty">Checking players...</p>
+                        </div>
+                    </div>
+                    <div class="player-group">
+                        <p class="player-group-label">Recently online</p>
+                        <ol id="forgeRecentPlayers" class="player-recent-list">
+                            <li class="player-empty">Checking player history...</li>
+                        </ol>
+                    </div>
+                </section>
                 <div class="action-grid">
                     <button id="startForgeBtn" class="mc-btn btn-start" type="button"
                         onclick="startMinecraftServer('forge', 'startForgeBtn')" disabled>Start Forge</button>
@@ -1544,6 +1761,25 @@
                     </div>
                     <p id="vanillaStatus" class="status-chip status-pending" aria-live="polite">VANILLA: CHECKING</p>
                 </div>
+
+                <section id="vanillaPlayerRoster" class="player-roster" data-running="false" aria-label="Vanilla player activity">
+                    <div class="player-roster-heading">
+                        <span class="label">Player activity</span>
+                        <span id="vanillaOnlineCount" class="player-online-count">-- online</span>
+                    </div>
+                    <div class="player-group">
+                        <p class="player-group-label">Online now</p>
+                        <div id="vanillaOnlinePlayers" class="player-online-list" aria-live="polite">
+                            <p class="player-empty">Checking players...</p>
+                        </div>
+                    </div>
+                    <div class="player-group">
+                        <p class="player-group-label">Recently online</p>
+                        <ol id="vanillaRecentPlayers" class="player-recent-list">
+                            <li class="player-empty">Checking player history...</li>
+                        </ol>
+                    </div>
+                </section>
 
                 <div class="version-panel">
                     <div class="version-heading">
@@ -1590,6 +1826,24 @@
                     <p id="hardcoreStatus" class="status-chip status-pending" aria-live="polite">HARDCORE: CHECKING</p>
                 </div>
                 <p class="server-description">A separate Hardcore world using the current Vanilla server version on port 25566.</p>
+                <section id="hardcorePlayerRoster" class="player-roster" data-running="false" aria-label="Hardcore player activity">
+                    <div class="player-roster-heading">
+                        <span class="label">Player activity</span>
+                        <span id="hardcoreOnlineCount" class="player-online-count">-- online</span>
+                    </div>
+                    <div class="player-group">
+                        <p class="player-group-label">Online now</p>
+                        <div id="hardcoreOnlinePlayers" class="player-online-list" aria-live="polite">
+                            <p class="player-empty">Checking players...</p>
+                        </div>
+                    </div>
+                    <div class="player-group">
+                        <p class="player-group-label">Recently online</p>
+                        <ol id="hardcoreRecentPlayers" class="player-recent-list">
+                            <li class="player-empty">Checking player history...</li>
+                        </ol>
+                    </div>
+                </section>
                 <p id="hardcoreAvailability" class="update-message" aria-live="polite">Checking which server mode is active...</p>
                 <p class="hardcore-warning">Death is permanent. Reset permanently deletes only the Hardcore world, creates a fresh world, and starts it immediately. No S3 backup is created.</p>
                 <div class="action-grid">
