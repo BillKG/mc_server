@@ -747,6 +747,24 @@
             font-weight: 950;
         }
 
+        .connection-details {
+            margin: 7px 0 0;
+            color: var(--muted);
+            font-size: .82rem;
+            line-height: 1.55;
+        }
+
+        .connection-details strong {
+            color: var(--text);
+            font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+        }
+
+        .connection-actions {
+            display: flex;
+            flex: 0 0 auto;
+            gap: 10px;
+        }
+
         .copy-button {
             padding: 9px 12px;
             border: 2px solid var(--line-bright);
@@ -840,6 +858,11 @@
             .copy-button {
                 width: 100%;
             }
+
+            .connection-actions {
+                width: 100%;
+                flex-direction: column;
+            }
         }
 
         @media (max-width: 480px) {
@@ -886,6 +909,8 @@
         const apiBaseUrl = "https://w6b144nh04.execute-api.ap-southeast-2.amazonaws.com";
         const mojangManifestUrl = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json";
         const vanillaAddress = "3.104.205.239:25565";
+        const bedrockAddress = "3.104.205.239";
+        const bedrockPort = "19132";
         const hardcoreAddress = "3.104.205.239:25566";
         let authToken = "";
         let authExpiresAt = 0;
@@ -1644,6 +1669,15 @@
             }
         }
 
+        async function copyConnectionValue(value, label) {
+            try {
+                await navigator.clipboard.writeText(value);
+                showToast(`${label} copied.`);
+            } catch (error) {
+                showToast(`${label}: ${value}`, "error");
+            }
+        }
+
         window.addEventListener("load", () => {
             try {
                 authToken = sessionStorage.getItem("mc-panel-token") || "";
@@ -1762,6 +1796,8 @@
                     <p id="vanillaStatus" class="status-chip status-pending" aria-live="polite">VANILLA: CHECKING</p>
                 </div>
 
+                <p class="server-description">The cross-play world. Java players use port 25565; Bedrock players join through Geyser on UDP port 19132.</p>
+
                 <section id="vanillaPlayerRoster" class="player-roster" data-running="false" aria-label="Vanilla player activity">
                     <div class="player-roster-heading">
                         <span class="label">Player activity</span>
@@ -1864,6 +1900,22 @@
                     <h2 id="connectionHeading" class="connection-address">3.104.205.239:25565</h2>
                 </div>
                 <button class="copy-button" type="button" onclick="copyServerAddress(vanillaAddress, 'Vanilla')">Copy address</button>
+            </div>
+        </section>
+
+        <section class="connection-panel" aria-labelledby="bedrockConnectionHeading">
+            <div class="connection-row">
+                <div>
+                    <p class="card-kicker">Direct connect · Bedrock</p>
+                    <h2 id="bedrockConnectionHeading" class="connection-address">3.104.205.239</h2>
+                    <p class="connection-details">Port <strong>19132</strong> · Vanilla world · Sign in with a Bedrock/Microsoft account</p>
+                </div>
+                <div class="connection-actions">
+                    <button class="copy-button" type="button"
+                        onclick="copyConnectionValue(bedrockAddress, 'Bedrock server address')">Copy address</button>
+                    <button class="copy-button" type="button"
+                        onclick="copyConnectionValue(bedrockPort, 'Bedrock port')">Copy port</button>
+                </div>
             </div>
         </section>
 
