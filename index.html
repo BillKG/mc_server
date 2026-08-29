@@ -571,6 +571,32 @@
             box-shadow: 0 0 8px var(--grass-light);
         }
 
+        .player-edition {
+            padding: 2px 4px;
+            border: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+            color: var(--muted);
+            font-size: .58rem;
+            font-weight: 950;
+            letter-spacing: .05em;
+            line-height: 1;
+            text-transform: uppercase;
+        }
+
+        .player-chip-bedrock {
+            border-color: #3f8fd2;
+            background: color-mix(in srgb, var(--panel-soft) 82%, #3f8fd2 18%);
+        }
+
+        .player-chip-bedrock::before {
+            background: #62b5f5;
+            box-shadow: 0 0 8px #62b5f5;
+        }
+
+        .player-chip-bedrock .player-edition {
+            border-color: #3f8fd2;
+            color: #8ccaff;
+        }
+
         .player-recent-list {
             display: grid;
             gap: 7px;
@@ -1508,10 +1534,19 @@
             const onlineList = document.getElementById(`${serverType}OnlinePlayers`);
             const recentList = document.getElementById(`${serverType}RecentPlayers`);
             const onlinePlayers = Array.isArray(result.online_players) ? result.online_players : [];
+            const suppliedDetails = Array.isArray(result.online_player_details)
+                ? result.online_player_details
+                : [];
+            const onlinePlayerDetails = suppliedDetails.length === onlinePlayers.length
+                ? suppliedDetails
+                : onlinePlayers.map(playerName => ({ name: playerName, edition: "java" }));
             const recentPlayers = Array.isArray(result.recent_players) ? result.recent_players : [];
+            const bedrockOnlineCount = onlinePlayerDetails.filter(player => player.edition === "bedrock").length;
 
             roster.dataset.running = String(Boolean(result.running));
-            count.textContent = `${onlinePlayers.length} online`;
+            count.textContent = bedrockOnlineCount > 0
+                ? `${onlinePlayers.length} online · ${bedrockOnlineCount} Bedrock`
+                : `${onlinePlayers.length} online`;
             onlineList.replaceChildren();
             recentList.replaceChildren();
 
@@ -1520,10 +1555,15 @@
             } else if (onlinePlayers.length === 0) {
                 appendPlayerEmptyState(onlineList, result.running ? "No players online." : "Server is stopped.");
             } else {
-                onlinePlayers.forEach(playerName => {
+                onlinePlayerDetails.forEach(player => {
                     const chip = document.createElement("span");
+                    const edition = document.createElement("span");
                     chip.className = "player-chip";
-                    chip.textContent = playerName;
+                    if (player.edition === "bedrock") chip.classList.add("player-chip-bedrock");
+                    chip.append(document.createTextNode(player.name || player.server_name || "Unknown player"));
+                    edition.className = "player-edition";
+                    edition.textContent = player.edition === "bedrock" ? "Bedrock" : "Java";
+                    chip.appendChild(edition);
                     onlineList.appendChild(chip);
                 });
             }
