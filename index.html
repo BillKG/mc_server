@@ -616,6 +616,16 @@
             color: var(--muted);
         }
 
+        .player-last-seen {
+            margin-left: auto;
+            white-space: nowrap;
+        }
+
+        .player-edition-bedrock {
+            border-color: #3f8fd2;
+            color: #8ccaff;
+        }
+
         .player-empty {
             margin: 0;
             font-size: .8rem;
@@ -1151,7 +1161,7 @@
                     document.getElementById("startBtn").disabled = false;
                     document.getElementById("stopBtn").disabled = true;
                     setMinecraftButtonsDisabled(true);
-                    setMinecraftStatusStopped();
+                    await checkMinecraftStatuses(false);
                 } else if (ec2Status === "running") {
                     document.getElementById("startBtn").disabled = true;
                     document.getElementById("stopBtn").disabled = false;
@@ -1597,9 +1607,13 @@
             recentPlayers.forEach(player => {
                 const item = document.createElement("li");
                 const name = document.createElement("span");
+                const edition = document.createElement("span");
                 const lastSeen = document.createElement("span");
                 item.className = "player-recent-item";
                 name.textContent = player.name || "Unknown player";
+                edition.className = "player-edition";
+                if (player.edition === "bedrock") edition.classList.add("player-edition-bedrock");
+                edition.textContent = player.edition === "bedrock" ? "Bedrock" : "Java";
                 lastSeen.className = "player-last-seen";
                 lastSeen.textContent = formatRelativePlayerTime(player);
                 if (player.last_seen_at) {
@@ -1608,7 +1622,7 @@
                         lastSeen.title = exactTime.toLocaleString();
                     }
                 }
-                item.append(name, lastSeen);
+                item.append(name, edition, lastSeen);
                 recentList.appendChild(item);
             });
         }
@@ -1647,7 +1661,7 @@
             }
         }
 
-        async function checkMinecraftStatuses() {
+        async function checkMinecraftStatuses(hostRunning = true) {
             const [forgeRunning, vanillaRunning, hardcoreRunning] = await Promise.all([
                 updateMinecraftStatus("forge", "forgeStatus"),
                 updateMinecraftStatus("vanilla", "vanillaStatus"),
@@ -1665,6 +1679,12 @@
                 vanilla: vanillaRunning,
                 hardcore: hardcoreRunning
             };
+
+            if (!hostRunning) {
+                setMinecraftButtonsDisabled(true);
+                document.getElementById("hardcoreAvailability").textContent = "Start EC2 to manage server modes. Saved player activity remains available below.";
+                return;
+            }
 
             if (minecraftActionInFlight) {
                 setMinecraftButtonsDisabled(true);
