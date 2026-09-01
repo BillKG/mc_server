@@ -81,6 +81,7 @@
 
         button,
         input,
+        select,
         summary {
             font: inherit;
         }
@@ -288,7 +289,46 @@
         .hero-actions {
             display: flex;
             flex: 0 0 auto;
+            align-items: flex-end;
             gap: 10px;
+        }
+
+        .refresh-control {
+            display: grid;
+            min-width: 124px;
+            gap: 4px;
+        }
+
+        .refresh-control label {
+            color: var(--muted);
+            font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+            font-size: .62rem;
+            font-weight: 800;
+            letter-spacing: .1em;
+            text-transform: uppercase;
+        }
+
+        .auto-refresh-select {
+            min-height: 46px;
+            padding: 9px 30px 9px 11px;
+            border: 2px solid var(--line-bright);
+            border-radius: 0;
+            outline: 0;
+            color: var(--text);
+            background-color: var(--panel-soft);
+            font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+            font-size: .8rem;
+            font-weight: 800;
+            cursor: pointer;
+        }
+
+        .auto-refresh-select:hover {
+            border-color: var(--grass-light);
+        }
+
+        .auto-refresh-select:focus-visible {
+            border-color: var(--focus);
+            box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 24%, transparent);
         }
 
         .theme-icon {
@@ -989,6 +1029,12 @@
             .hero-actions {
                 width: 100%;
                 flex-direction: column;
+                align-items: stretch;
+            }
+
+            .refresh-control,
+            .auto-refresh-select {
+                width: 100%;
             }
 
             .server-grid {
@@ -1063,11 +1109,13 @@
         const bedrockAddress = "3.104.205.239";
         const bedrockPort = "19132";
         const hardcoreAddress = "3.104.205.239:25566";
+        const autoRefreshStorageKey = "mc-panel-auto-refresh-ms";
+        const allowedAutoRefreshIntervals = new Set([0, 60000, 300000, 600000]);
         let authToken = "";
         let authExpiresAt = 0;
         let refreshInFlight = null;
-        let dashboardRefreshTimer = null;
-        let hostMetricsRefreshTimer = null;
+        let autoRefreshIntervalMs = 300000;
+        let autoRefreshTimer = null;
         let hostMetricsInFlight = null;
         let sessionExpiryTimer = null;
         let toastTimer = null;
@@ -1113,6 +1161,48 @@
             updateThemeButton();
         }
 
+        function loadAutoRefreshPreference() {
+            try {
+                const storedInterval = localStorage.getItem(autoRefreshStorageKey);
+                const savedInterval = Number(storedInterval);
+                if (storedInterval !== null && allowedAutoRefreshIntervals.has(savedInterval)) {
+                    autoRefreshIntervalMs = savedInterval;
+                }
+            } catch (error) {
+                console.warn("Auto-refresh preference could not be loaded:", error);
+            }
+        }
+
+        function scheduleAutoRefresh() {
+            clearInterval(autoRefreshTimer);
+            autoRefreshTimer = null;
+
+            const select = document.getElementById("autoRefreshSelect");
+            if (select) {
+                select.value = String(autoRefreshIntervalMs);
+            }
+
+            if (autoRefreshIntervalMs > 0 && authToken) {
+                autoRefreshTimer = setInterval(refreshAllDashboardData, autoRefreshIntervalMs);
+            }
+        }
+
+        function setAutoRefreshInterval(value) {
+            const intervalMs = Number(value);
+            if (!allowedAutoRefreshIntervals.has(intervalMs)) return;
+
+            autoRefreshIntervalMs = intervalMs;
+            try {
+                localStorage.setItem(autoRefreshStorageKey, String(intervalMs));
+            } catch (error) {
+                console.warn("Auto-refresh preference could not be saved:", error);
+            }
+            scheduleAutoRefresh();
+
+            const label = intervalMs === 0 ? "off" : `every ${intervalMs / 60000} min`;
+            showToast(`Auto refresh ${label}.`);
+        }
+
         function saveAuthSession(token, expiresAt) {
             authToken = token;
             authExpiresAt = Number(expiresAt) || 0;
@@ -1154,23 +1244,14 @@
             document.getElementById("dashboardRoot").hidden = false;
             updateThemeButton();
             scheduleSessionExpiry();
-            refreshDashboard();
-            refreshHostMetrics();
-
-            if (!dashboardRefreshTimer) {
-                dashboardRefreshTimer = setInterval(refreshDashboard, 30000);
-            }
-            if (!hostMetricsRefreshTimer) {
-                hostMetricsRefreshTimer = setInterval(refreshHostMetrics, 300000);
-            }
+            refreshAllDashboardData();
+            scheduleAutoRefresh();
         }
 
         function lockDashboard(message = "") {
             clearAuthSession();
-            clearInterval(dashboardRefreshTimer);
-            dashboardRefreshTimer = null;
-            clearInterval(hostMetricsRefreshTimer);
-            hostMetricsRefreshTimer = null;
+            clearInterval(autoRefreshTimer);
+            autoRefreshTimer = null;
             document.getElementById("dashboardRoot").hidden = true;
             document.getElementById("accessGate").hidden = false;
             document.getElementById("accessError").textContent = message;
@@ -1948,6 +2029,10 @@
             return refreshInFlight;
         }
 
+        async function refreshAllDashboardData() {
+            return Promise.all([refreshDashboard(), refreshHostMetrics()]);
+        }
+
         async function copyServerAddress(address, label) {
             try {
                 await navigator.clipboard.writeText(address);
@@ -1967,6 +2052,7 @@
         }
 
         window.addEventListener("load", () => {
+            loadAutoRefreshPreference();
             try {
                 authToken = sessionStorage.getItem("mc-panel-token") || "";
                 authExpiresAt = Number(sessionStorage.getItem("mc-panel-expires-at")) || 0;
@@ -2011,6 +2097,16 @@
                 </div>
             </div>
             <div class="hero-actions">
+                <div class="refresh-control">
+                    <label for="autoRefreshSelect">Auto refresh</label>
+                    <select id="autoRefreshSelect" class="auto-refresh-select"
+                        onchange="setAutoRefreshInterval(this.value)">
+                        <option value="60000">1 min</option>
+                        <option value="300000">5 mins</option>
+                        <option value="600000">10 mins</option>
+                        <option value="0">None</option>
+                    </select>
+                </div>
                 <button id="themeToggle" class="theme-toggle" type="button" onclick="toggleTheme()" aria-pressed="false">
                     <span id="themeIcon" class="theme-icon" aria-hidden="true">☀</span>
                     <span id="themeLabel">Light mode</span>
