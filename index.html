@@ -373,6 +373,115 @@
             font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
         }
 
+        .host-metrics {
+            margin-top: 24px;
+            padding-top: 22px;
+            border-top: 2px solid var(--line);
+        }
+
+        .host-metrics-heading {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 14px;
+        }
+
+        .host-metrics-heading h3 {
+            margin: 3px 0 0;
+            font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+            font-size: 1rem;
+            font-weight: 950;
+            letter-spacing: -.02em;
+            text-transform: uppercase;
+        }
+
+        .host-metrics-observed {
+            margin: 0;
+            color: var(--muted);
+            font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+            font-size: .72rem;
+            text-align: right;
+        }
+
+        .metric-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        .metric-card {
+            min-width: 0;
+            padding: 13px;
+            border: 1px solid var(--line);
+            background: var(--panel-soft);
+        }
+
+        .metric-card-heading {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .metric-label {
+            color: var(--muted);
+            font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+            font-size: .7rem;
+            font-weight: 900;
+            letter-spacing: .06em;
+            text-transform: uppercase;
+        }
+
+        .metric-value {
+            color: var(--text);
+            font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+            font-size: 1.15rem;
+            font-weight: 950;
+        }
+
+        .metric-chart {
+            display: block;
+            width: 100%;
+            height: 88px;
+            margin-top: 9px;
+            overflow: visible;
+        }
+
+        .metric-grid-line {
+            fill: none;
+            stroke: color-mix(in srgb, var(--line) 62%, transparent);
+            stroke-width: 1;
+            vector-effect: non-scaling-stroke;
+        }
+
+        .metric-line {
+            fill: none;
+            stroke: var(--grass-light);
+            stroke-linecap: square;
+            stroke-linejoin: bevel;
+            stroke-width: 2.5;
+            vector-effect: non-scaling-stroke;
+        }
+
+        .metric-card-memory .metric-line {
+            stroke: var(--water);
+        }
+
+        .metric-card-disk .metric-line {
+            stroke: var(--gold);
+        }
+
+        .metric-chart-caption {
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+            margin-top: 3px;
+            color: var(--muted);
+            font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+            font-size: .62rem;
+        }
+
         .action-grid {
             display: grid;
             grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -862,6 +971,7 @@
 
             .hero,
             .host-grid,
+            .metric-grid,
             .server-grid {
                 grid-template-columns: 1fr;
             }
@@ -886,9 +996,14 @@
             }
 
             .connection-row,
+            .host-metrics-heading,
             .dashboard-footer {
                 align-items: flex-start;
                 flex-direction: column;
+            }
+
+            .host-metrics-observed {
+                text-align: left;
             }
 
             .copy-button {
@@ -952,6 +1067,8 @@
         let authExpiresAt = 0;
         let refreshInFlight = null;
         let dashboardRefreshTimer = null;
+        let hostMetricsRefreshTimer = null;
+        let hostMetricsInFlight = null;
         let sessionExpiryTimer = null;
         let toastTimer = null;
         let releaseCache = null;
@@ -1038,9 +1155,13 @@
             updateThemeButton();
             scheduleSessionExpiry();
             refreshDashboard();
+            refreshHostMetrics();
 
             if (!dashboardRefreshTimer) {
                 dashboardRefreshTimer = setInterval(refreshDashboard, 30000);
+            }
+            if (!hostMetricsRefreshTimer) {
+                hostMetricsRefreshTimer = setInterval(refreshHostMetrics, 300000);
             }
         }
 
@@ -1048,6 +1169,8 @@
             clearAuthSession();
             clearInterval(dashboardRefreshTimer);
             dashboardRefreshTimer = null;
+            clearInterval(hostMetricsRefreshTimer);
+            hostMetricsRefreshTimer = null;
             document.getElementById("dashboardRoot").hidden = true;
             document.getElementById("accessGate").hidden = false;
             document.getElementById("accessError").textContent = message;
@@ -1731,6 +1854,90 @@
             setAllPlayerActivityUnavailable("Host status is unavailable.");
         }
 
+        function metricValue(value) {
+            const numericValue = Number(value);
+            return Number.isFinite(numericValue) ? `${numericValue.toFixed(1)}%` : "--";
+        }
+
+        function metricPath(points, periodSeconds) {
+            const endTime = Date.now();
+            const startTime = endTime - (24 * 60 * 60 * 1000);
+            const width = 320;
+            const top = 6;
+            const height = 76;
+            const maximumGap = Math.max(600, Number(periodSeconds) * 2.5) * 1000;
+            let previousTime = null;
+            let path = "";
+
+            (Array.isArray(points) ? points : []).forEach(point => {
+                const timestamp = new Date(point.timestamp).getTime();
+                const value = Math.max(0, Math.min(100, Number(point.value)));
+                if (!Number.isFinite(timestamp) || !Number.isFinite(value) || timestamp < startTime || timestamp > endTime) return;
+                const x = ((timestamp - startTime) / (endTime - startTime)) * width;
+                const y = top + ((100 - value) / 100) * height;
+                const command = previousTime === null || timestamp - previousTime > maximumGap ? "M" : "L";
+                path += `${command}${x.toFixed(1)},${y.toFixed(1)} `;
+                previousTime = timestamp;
+            });
+            return path.trim();
+        }
+
+        function renderMetric(metricId, value, points, periodSeconds) {
+            const valueElement = document.getElementById(`${metricId}MetricValue`);
+            const pathElement = document.getElementById(`${metricId}MetricPath`);
+            const rangeElement = document.getElementById(`${metricId}MetricRange`);
+            const validValues = (Array.isArray(points) ? points : [])
+                .map(point => Number(point.value))
+                .filter(Number.isFinite);
+            valueElement.textContent = metricValue(value);
+            pathElement.setAttribute("d", metricPath(points, periodSeconds));
+            rangeElement.textContent = validValues.length > 0
+                ? `${Math.min(...validValues).toFixed(0)}–${Math.max(...validValues).toFixed(0)}%`
+                : "No samples";
+        }
+
+        function setHostMetricsUnavailable(message) {
+            ["cpu", "memory", "disk"].forEach(metricId => {
+                renderMetric(metricId, null, [], 300);
+            });
+            document.getElementById("hostMetricsObserved").textContent = message;
+        }
+
+        function renderHostMetrics(result) {
+            const current = result.current || {};
+            const series = result.series || {};
+            const periodSeconds = Number(result.period_seconds) || 300;
+            renderMetric("cpu", current.cpu, series.cpu, periodSeconds);
+            renderMetric("memory", current.memory, series.memory, periodSeconds);
+            renderMetric("disk", current.disk, series.disk, periodSeconds);
+
+            const observed = result.observed_at ? new Date(result.observed_at) : null;
+            const hostState = String(result.host_state || "unknown").toLowerCase();
+            document.getElementById("hostMetricsObserved").textContent = observed && !Number.isNaN(observed.getTime())
+                ? `Last sample ${observed.toLocaleString()} · host ${hostState}`
+                : `No metric samples yet · host ${hostState}`;
+        }
+
+        async function refreshHostMetrics() {
+            if (hostMetricsInFlight) return hostMetricsInFlight;
+            hostMetricsInFlight = (async () => {
+                try {
+                    const response = await apiFetch("/metrics", { method: "GET", cache: "no-store" });
+                    const result = await parseApiResponse(response);
+                    if (!response.ok || !result || typeof result !== "object") {
+                        throw new Error(result?.message || "Unable to load host metrics.");
+                    }
+                    renderHostMetrics(result);
+                } catch (error) {
+                    console.error("Error fetching host metrics:", error);
+                    setHostMetricsUnavailable("Host metrics are temporarily unavailable.");
+                } finally {
+                    hostMetricsInFlight = null;
+                }
+            })();
+            return hostMetricsInFlight;
+        }
+
         async function refreshDashboard() {
             if (refreshInFlight) return refreshInFlight;
             refreshInFlight = Promise.all([checkEC2Status(), checkVanillaUpdateStatus()])
@@ -1831,6 +2038,50 @@
                     <button id="stopBtn" class="mc-btn btn-stop" type="button" onclick="stopServer()" disabled>Stop EC2</button>
                 </div>
             </div>
+            <section class="host-metrics" aria-labelledby="hostMetricsHeading">
+                <div class="host-metrics-heading">
+                    <div>
+                        <p class="card-kicker">CloudWatch · 24-hour history</p>
+                        <h3 id="hostMetricsHeading">Current host usage</h3>
+                    </div>
+                    <p id="hostMetricsObserved" class="host-metrics-observed" aria-live="polite">Loading host metrics...</p>
+                </div>
+                <div class="metric-grid">
+                    <article class="metric-card metric-card-cpu">
+                        <div class="metric-card-heading">
+                            <span class="metric-label">CPU</span>
+                            <strong id="cpuMetricValue" class="metric-value">--</strong>
+                        </div>
+                        <svg class="metric-chart" viewBox="0 0 320 88" preserveAspectRatio="none" role="img" aria-label="CPU utilization over the last 24 hours">
+                            <path class="metric-grid-line" d="M0 6H320 M0 44H320 M0 82H320"></path>
+                            <path id="cpuMetricPath" class="metric-line" d=""></path>
+                        </svg>
+                        <div class="metric-chart-caption"><span>24h ago</span><span id="cpuMetricRange">No samples</span><span>now</span></div>
+                    </article>
+                    <article class="metric-card metric-card-memory">
+                        <div class="metric-card-heading">
+                            <span class="metric-label">RAM</span>
+                            <strong id="memoryMetricValue" class="metric-value">--</strong>
+                        </div>
+                        <svg class="metric-chart" viewBox="0 0 320 88" preserveAspectRatio="none" role="img" aria-label="Memory utilization over the last 24 hours">
+                            <path class="metric-grid-line" d="M0 6H320 M0 44H320 M0 82H320"></path>
+                            <path id="memoryMetricPath" class="metric-line" d=""></path>
+                        </svg>
+                        <div class="metric-chart-caption"><span>24h ago</span><span id="memoryMetricRange">No samples</span><span>now</span></div>
+                    </article>
+                    <article class="metric-card metric-card-disk">
+                        <div class="metric-card-heading">
+                            <span class="metric-label">Root disk</span>
+                            <strong id="diskMetricValue" class="metric-value">--</strong>
+                        </div>
+                        <svg class="metric-chart" viewBox="0 0 320 88" preserveAspectRatio="none" role="img" aria-label="Root disk utilization over the last 24 hours">
+                            <path class="metric-grid-line" d="M0 6H320 M0 44H320 M0 82H320"></path>
+                            <path id="diskMetricPath" class="metric-line" d=""></path>
+                        </svg>
+                        <div class="metric-chart-caption"><span>24h ago</span><span id="diskMetricRange">No samples</span><span>now</span></div>
+                    </article>
+                </div>
+            </section>
         </section>
 
         <section class="server-grid" aria-label="Minecraft servers">
