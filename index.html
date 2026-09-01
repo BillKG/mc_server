@@ -331,6 +331,13 @@
             box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 24%, transparent);
         }
 
+        .auto-refresh-select:disabled {
+            border-color: var(--line);
+            color: var(--muted);
+            cursor: not-allowed;
+            opacity: .72;
+        }
+
         .theme-icon {
             font-size: 1.1rem;
         }
@@ -520,6 +527,15 @@
             color: var(--muted);
             font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
             font-size: .62rem;
+        }
+
+        .metric-space {
+            margin: 8px 0 0;
+            color: var(--muted);
+            font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+            font-size: .67rem;
+            font-weight: 800;
+            text-align: center;
         }
 
         .action-grid {
@@ -1110,12 +1126,13 @@
         const bedrockPort = "19132";
         const hardcoreAddress = "3.104.205.239:25566";
         const autoRefreshStorageKey = "mc-panel-auto-refresh-ms";
-        const allowedAutoRefreshIntervals = new Set([0, 60000, 300000, 600000]);
+        const allowedAutoRefreshIntervals = new Set([0, 10000, 60000, 300000, 600000]);
         let authToken = "";
         let authExpiresAt = 0;
         let refreshInFlight = null;
         let autoRefreshIntervalMs = 300000;
         let autoRefreshTimer = null;
+        let currentHostState = "unknown";
         let hostMetricsInFlight = null;
         let sessionExpiryTimer = null;
         let toastTimer = null;
@@ -1178,13 +1195,26 @@
             autoRefreshTimer = null;
 
             const select = document.getElementById("autoRefreshSelect");
+            const effectiveIntervalMs = currentHostState === "stopped" ? 0 : autoRefreshIntervalMs;
             if (select) {
-                select.value = String(autoRefreshIntervalMs);
+                select.value = String(effectiveIntervalMs);
+                select.disabled = currentHostState === "stopped";
+                select.title = currentHostState === "stopped"
+                    ? "Auto refresh is off while EC2 is stopped."
+                    : "Choose how often dashboard data refreshes.";
             }
 
-            if (autoRefreshIntervalMs > 0 && authToken) {
-                autoRefreshTimer = setInterval(refreshAllDashboardData, autoRefreshIntervalMs);
+            if (effectiveIntervalMs > 0 && authToken) {
+                autoRefreshTimer = setInterval(refreshAllDashboardData, effectiveIntervalMs);
             }
+        }
+
+        function setCurrentHostState(state) {
+            const normalizedState = String(state || "unknown").toLowerCase();
+            if (!["running", "stopped", "pending"].includes(normalizedState)) return;
+            if (normalizedState === currentHostState) return;
+            currentHostState = normalizedState;
+            scheduleAutoRefresh();
         }
 
         function setAutoRefreshInterval(value) {
@@ -1199,7 +1229,11 @@
             }
             scheduleAutoRefresh();
 
-            const label = intervalMs === 0 ? "off" : `every ${intervalMs / 60000} min`;
+            const label = intervalMs === 0
+                ? "off"
+                : intervalMs < 60000
+                    ? `every ${intervalMs / 1000} sec`
+                    : `every ${intervalMs / 60000} min`;
             showToast(`Auto refresh ${label}.`);
         }
 
@@ -1351,6 +1385,7 @@
                 }
 
                 const ec2Status = (result.state || "unknown").toLowerCase();
+                setCurrentHostState(ec2Status);
                 setStatus("ec2Status", "EC2", ec2Status);
                 document.getElementById("ec2Uptime").textContent = ec2Status === "running"
                     ? formatUptime(result.uptime_seconds, "Host uptime")
@@ -1981,6 +2016,7 @@
             ["cpu", "memory", "disk"].forEach(metricId => {
                 renderMetric(metricId, null, [], 300);
             });
+            document.getElementById("diskMetricSpace").textContent = "-- GiB used · -- GiB available";
             document.getElementById("hostMetricsObserved").textContent = message;
         }
 
@@ -1992,8 +2028,23 @@
             renderMetric("memory", current.memory, series.memory, periodSeconds);
             renderMetric("disk", current.disk, series.disk, periodSeconds);
 
+            const diskSpace = result.disk_space || {};
+            const usedGiB = Number(diskSpace.used_gib);
+            const availableGiB = Number(diskSpace.available_gib);
+            const hasDiskSpace = diskSpace.used_gib !== null
+                && diskSpace.used_gib !== undefined
+                && diskSpace.available_gib !== null
+                && diskSpace.available_gib !== undefined
+                && Number.isFinite(usedGiB)
+                && Number.isFinite(availableGiB);
+            document.getElementById("diskMetricSpace").textContent =
+                hasDiskSpace
+                    ? `${usedGiB.toFixed(1)} GiB used · ${availableGiB.toFixed(1)} GiB available`
+                    : "-- GiB used · -- GiB available";
+
             const observed = result.observed_at ? new Date(result.observed_at) : null;
             const hostState = String(result.host_state || "unknown").toLowerCase();
+            setCurrentHostState(hostState);
             document.getElementById("hostMetricsObserved").textContent = observed && !Number.isNaN(observed.getTime())
                 ? `Last sample ${observed.toLocaleString()} · host ${hostState}`
                 : `No metric samples yet · host ${hostState}`;
@@ -2101,6 +2152,7 @@
                     <label for="autoRefreshSelect">Auto refresh</label>
                     <select id="autoRefreshSelect" class="auto-refresh-select"
                         onchange="setAutoRefreshInterval(this.value)">
+                        <option value="10000">10 sec</option>
                         <option value="60000">1 min</option>
                         <option value="300000">5 mins</option>
                         <option value="600000">10 mins</option>
@@ -2175,6 +2227,7 @@
                             <path id="diskMetricPath" class="metric-line" d=""></path>
                         </svg>
                         <div class="metric-chart-caption"><span>24h ago</span><span id="diskMetricRange">No samples</span><span>now</span></div>
+                        <p id="diskMetricSpace" class="metric-space">-- GiB used · -- GiB available</p>
                     </article>
                 </div>
             </section>
