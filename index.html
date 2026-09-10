@@ -293,6 +293,42 @@
             gap: 10px;
         }
 
+        .panel-tabs {
+            display: flex;
+            gap: 10px;
+            margin-top: 24px;
+            padding: 8px;
+            border: 2px solid var(--line);
+            background: var(--panel-soft);
+            box-shadow: 0 5px 0 var(--shadow);
+        }
+
+        .panel-tab {
+            min-height: 44px;
+            padding: 9px 18px;
+            border: 2px solid transparent;
+            color: var(--muted);
+            background: transparent;
+            font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+            font-size: .82rem;
+            font-weight: 900;
+            letter-spacing: .04em;
+            text-transform: uppercase;
+            cursor: pointer;
+        }
+
+        .panel-tab:hover,
+        .panel-tab[aria-selected="true"] {
+            border-color: var(--grass-dark);
+            color: var(--text);
+            background: color-mix(in srgb, var(--panel-raised) 82%, var(--grass) 18%);
+        }
+
+        .panel-tab:focus-visible {
+            outline: 3px solid var(--focus);
+            outline-offset: 2px;
+        }
+
         .refresh-control {
             display: grid;
             min-width: 124px;
@@ -978,6 +1014,201 @@
             cursor: pointer;
         }
 
+        .backup-heading,
+        .backup-toolbar,
+        .backup-item-heading,
+        .backup-dialog-actions {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        .backup-heading h2,
+        .backup-toolbar h2,
+        .backup-dialog h2 {
+            margin: 4px 0 0;
+            font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+            font-weight: 950;
+            letter-spacing: -.04em;
+        }
+
+        .backup-copy,
+        .backup-job-message,
+        .backup-size-note,
+        .backup-dialog-copy {
+            color: var(--muted);
+            line-height: 1.55;
+        }
+
+        .backup-copy {
+            max-width: 680px;
+            margin: 12px 0 0;
+        }
+
+        .backup-job-message {
+            min-height: 1.4rem;
+            margin: 14px 0 0;
+            font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+            font-size: .8rem;
+            font-weight: 800;
+        }
+
+        .backup-status-row {
+            margin-top: 18px;
+        }
+
+        .backup-summary-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 12px;
+            margin-top: 22px;
+        }
+
+        .backup-summary-card {
+            padding: 15px;
+            border: 1px solid var(--line);
+            background: var(--panel-soft);
+        }
+
+        .backup-summary-value {
+            display: block;
+            margin-top: 7px;
+            font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+            font-size: clamp(1rem, 3vw, 1.45rem);
+            font-weight: 950;
+        }
+
+        .backup-toolbar {
+            align-items: flex-end;
+        }
+
+        .backup-list {
+            display: grid;
+            gap: 12px;
+            margin-top: 18px;
+        }
+
+        .backup-item {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 18px;
+            align-items: center;
+            padding: 16px;
+            border: 1px solid var(--line);
+            background: var(--panel-soft);
+        }
+
+        .backup-item-title {
+            margin: 0;
+            overflow-wrap: anywhere;
+            font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+            font-size: .95rem;
+            font-weight: 950;
+        }
+
+        .backup-item-meta,
+        .backup-item-contents {
+            margin: 7px 0 0;
+            color: var(--muted);
+            font-size: .78rem;
+            line-height: 1.5;
+        }
+
+        .backup-item-size {
+            color: var(--text);
+            font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+            font-weight: 950;
+        }
+
+        .backup-item-actions {
+            display: grid;
+            min-width: 120px;
+            gap: 9px;
+            justify-items: stretch;
+        }
+
+        .backup-tag {
+            display: inline-flex;
+            width: fit-content;
+            padding: 4px 7px;
+            border: 1px solid var(--line-bright);
+            color: var(--muted);
+            font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+            font-size: .64rem;
+            font-weight: 900;
+            letter-spacing: .04em;
+            text-transform: uppercase;
+        }
+
+        .backup-tag.protected {
+            border-color: var(--gold-dark);
+            color: var(--gold);
+        }
+
+        .btn-backup {
+            min-width: 210px;
+            background: #27658d;
+        }
+
+        .btn-delete-backup {
+            min-height: 38px;
+            padding: 8px 10px;
+            background: var(--danger-dark);
+            font-size: .72rem;
+        }
+
+        .backup-empty {
+            margin: 0;
+            padding: 24px;
+            border: 1px dashed var(--line-bright);
+            color: var(--muted);
+            text-align: center;
+        }
+
+        .backup-size-note {
+            margin: 16px 0 0;
+            font-size: .75rem;
+        }
+
+        .backup-dialog {
+            width: min(470px, calc(100% - 32px));
+            padding: 0;
+            border: 2px solid var(--danger-dark);
+            color: var(--text);
+            background: var(--panel-raised);
+            box-shadow: 0 10px 0 var(--shadow);
+        }
+
+        .backup-dialog::backdrop {
+            background: rgba(0, 0, 0, .72);
+        }
+
+        .backup-dialog-body {
+            padding: 24px;
+        }
+
+        .backup-confirm-input {
+            width: 100%;
+            margin-top: 8px;
+            padding: 11px 12px;
+            border: 2px solid var(--line-bright);
+            border-radius: 0;
+            color: var(--text);
+            background: var(--panel-soft);
+            font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+            font-weight: 900;
+        }
+
+        .backup-dialog-actions {
+            margin-top: 20px;
+            justify-content: flex-end;
+        }
+
+        .backup-dialog-cancel {
+            background: var(--stone);
+        }
+
         .dashboard-footer {
             display: flex;
             justify-content: space-between;
@@ -1003,12 +1234,18 @@
             background: var(--panel-raised);
             box-shadow: 0 7px 0 var(--shadow);
             font-weight: 750;
+            visibility: hidden;
+            opacity: 0;
+            pointer-events: none;
             transform: translateY(140%);
-            transition: transform .18s ease;
+            transition: visibility 0s linear .18s, opacity .18s ease, transform .18s ease;
         }
 
         .toast-message.visible {
+            visibility: visible;
+            opacity: 1;
             transform: translateY(0);
+            transition-delay: 0s;
         }
 
         .toast-message.success {
@@ -1028,6 +1265,7 @@
             .hero,
             .host-grid,
             .metric-grid,
+            .backup-summary-grid,
             .server-grid {
                 grid-template-columns: 1fr;
             }
@@ -1059,9 +1297,29 @@
 
             .connection-row,
             .host-metrics-heading,
+            .backup-heading,
+            .backup-toolbar,
             .dashboard-footer {
                 align-items: flex-start;
                 flex-direction: column;
+            }
+
+            .panel-tabs,
+            .backup-heading .mc-btn,
+            .backup-toolbar .copy-button {
+                width: 100%;
+            }
+
+            .panel-tab {
+                flex: 1 1 0;
+            }
+
+            .backup-item {
+                grid-template-columns: 1fr;
+            }
+
+            .backup-item-actions {
+                width: 100%;
             }
 
             .host-metrics-observed {
@@ -1134,6 +1392,11 @@
         let autoRefreshTimer = null;
         let currentHostState = "unknown";
         let hostMetricsInFlight = null;
+        let backupRefreshInFlight = null;
+        let backupPollTimer = null;
+        let backupJobActive = false;
+        let backupsCache = [];
+        let selectedBackupId = "";
         let sessionExpiryTimer = null;
         let toastTimer = null;
         let releaseCache = null;
@@ -1277,6 +1540,7 @@
             document.getElementById("accessGate").hidden = true;
             document.getElementById("dashboardRoot").hidden = false;
             updateThemeButton();
+            selectPanelTab("server");
             scheduleSessionExpiry();
             refreshAllDashboardData();
             scheduleAutoRefresh();
@@ -1286,10 +1550,21 @@
             clearAuthSession();
             clearInterval(autoRefreshTimer);
             autoRefreshTimer = null;
+            clearTimeout(backupPollTimer);
+            backupPollTimer = null;
             document.getElementById("dashboardRoot").hidden = true;
             document.getElementById("accessGate").hidden = false;
             document.getElementById("accessError").textContent = message;
             document.getElementById("passcodeInput").focus();
+        }
+
+        function selectPanelTab(tabName) {
+            const backupsSelected = tabName === "backups";
+            document.getElementById("serverView").hidden = backupsSelected;
+            document.getElementById("backupsView").hidden = !backupsSelected;
+            document.getElementById("serverTab").setAttribute("aria-selected", String(!backupsSelected));
+            document.getElementById("backupsTab").setAttribute("aria-selected", String(backupsSelected));
+            if (backupsSelected) refreshBackups();
         }
 
         async function authenticateDashboard(event) {
@@ -1397,13 +1672,13 @@
                     : "";
 
                 if (ec2Status === "stopped") {
-                    document.getElementById("startBtn").disabled = false;
+                    document.getElementById("startBtn").disabled = backupJobActive;
                     document.getElementById("stopBtn").disabled = true;
                     setMinecraftButtonsDisabled(true);
                     await checkMinecraftStatuses(false);
                 } else if (ec2Status === "running") {
                     document.getElementById("startBtn").disabled = true;
-                    document.getElementById("stopBtn").disabled = false;
+                    document.getElementById("stopBtn").disabled = backupJobActive;
                     setMinecraftButtonsDisabled(true);
                     await checkMinecraftStatuses();
                 } else {
@@ -1422,6 +1697,10 @@
         }
 
         async function sendRequest(endpoint, method, buttonId) {
+            if (backupJobActive) {
+                showToast("Wait for the world backup to finish before changing server state.", "error");
+                return;
+            }
             const button = document.getElementById(buttonId);
             const originalLabel = button.textContent;
             button.disabled = true;
@@ -1487,7 +1766,10 @@
         }
 
         async function startMinecraftServer(serverType, buttonId) {
-            if (minecraftActionInFlight) return;
+            if (minecraftActionInFlight || backupJobActive) {
+                if (backupJobActive) showToast("Wait for the world backup to finish before switching servers.", "error");
+                return;
+            }
 
             const activeServerTypes = Object.entries(minecraftRunningState)
                 .filter(([activeType, isRunning]) => activeType !== serverType && isRunning)
@@ -1568,7 +1850,7 @@
                 updateMessage.textContent = result.message || "";
 
                 const updateInProgress = ["checking", "scheduled", "updating"].includes(result.update_state);
-                const canUpdate = result.update_available && result.updates_enabled && !updateInProgress;
+                const canUpdate = result.update_available && result.updates_enabled && !updateInProgress && !backupJobActive;
                 updateButton.hidden = !result.update_available;
                 updateButton.disabled = !canUpdate;
 
@@ -1659,6 +1941,10 @@
         }
 
         async function updateVanillaServer() {
+            if (backupJobActive) {
+                showToast("Wait for the world backup to finish before updating Vanilla.", "error");
+                return;
+            }
             const updateButton = document.getElementById("updateVanillaBtn");
             const updateMessage = document.getElementById("vanillaUpdateMessage");
             if (!confirm("Update vanilla? The world will be backed up to S3 before server software changes.")) return;
@@ -1687,7 +1973,10 @@
         }
 
         async function resetHardcoreWorld() {
-            if (minecraftActionInFlight) return;
+            if (minecraftActionInFlight || backupJobActive) {
+                if (backupJobActive) showToast("Wait for the world backup to finish before resetting Hardcore.", "error");
+                return;
+            }
             const resetButton = document.getElementById("resetHardcoreBtn");
             const warning = "Permanently delete the Hardcore world with NO BACKUP and immediately create a new world?";
             if (!confirm(warning)) return;
@@ -1925,9 +2214,11 @@
                 return;
             }
 
-            if (minecraftActionInFlight) {
+            if (minecraftActionInFlight || backupJobActive) {
                 setMinecraftButtonsDisabled(true);
-                document.getElementById("hardcoreAvailability").textContent = "A server action is in progress. Controls will unlock when it finishes.";
+                document.getElementById("hardcoreAvailability").textContent = backupJobActive
+                    ? "A world backup is in progress. Server controls will unlock when it finishes."
+                    : "A server action is in progress. Controls will unlock when it finishes.";
                 return;
             }
 
@@ -2070,6 +2361,234 @@
             return hostMetricsInFlight;
         }
 
+        function formatBytes(value) {
+            const bytes = Number(value);
+            if (!Number.isFinite(bytes) || bytes < 0) return "--";
+            if (bytes === 0) return "0 B";
+            const units = ["B", "KiB", "MiB", "GiB", "TiB"];
+            const unitIndex = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+            const amount = bytes / (1024 ** unitIndex);
+            return `${amount >= 100 || unitIndex === 0 ? amount.toFixed(0) : amount.toFixed(2)} ${units[unitIndex]}`;
+        }
+
+        function formatBackupDate(value) {
+            const date = value ? new Date(value) : null;
+            return date && !Number.isNaN(date.getTime()) ? date.toLocaleString() : "Time unavailable";
+        }
+
+        function backupKindLabel(backup) {
+            if (backup.kind === "server_snapshot") return "EBS snapshot";
+            if (backup.kind === "configuration") return "Configuration";
+            return "World archive";
+        }
+
+        function backupStateIsActive(state) {
+            return ["queued", "starting_host", "preparing", "syncing", "compressing", "uploading"].includes(state);
+        }
+
+        function renderBackupJob(job = {}) {
+            const state = String(job.state || "idle");
+            const wasActive = backupJobActive;
+            backupJobActive = backupStateIsActive(state);
+            const chip = document.getElementById("backupJobStatus");
+            const displayState = backupJobActive ? "pending" : (state === "failed" ? "stopped" : "running");
+            chip.className = `status-chip status-${displayState}`;
+            chip.textContent = state === "idle" ? "BACKUP: IDLE" : `BACKUP: ${state.replaceAll("_", " ").toUpperCase()}`;
+            document.getElementById("backupJobMessage").textContent = job.message || "No world backup is running.";
+            document.getElementById("createBackupBtn").disabled = backupJobActive;
+            if (backupJobActive) {
+                document.getElementById("startBtn").disabled = true;
+                document.getElementById("stopBtn").disabled = true;
+                setMinecraftButtonsDisabled(true);
+            } else if (wasActive) {
+                setTimeout(refreshDashboard, 0);
+            }
+
+            clearTimeout(backupPollTimer);
+            backupPollTimer = null;
+            if (backupJobActive && authToken) {
+                backupPollTimer = setTimeout(refreshBackups, 5000);
+            }
+        }
+
+        function renderBackupSummary(summary = {}) {
+            document.getElementById("backupCount").textContent = Number.isFinite(Number(summary.backup_count))
+                ? String(summary.backup_count)
+                : "--";
+            document.getElementById("archiveSize").textContent = formatBytes(summary.archive_size_bytes);
+            document.getElementById("snapshotSize").textContent = formatBytes(summary.snapshot_capacity_bytes);
+            document.getElementById("latestBackupTime").textContent = summary.latest_completed_at
+                ? `Latest ${formatBackupDate(summary.latest_completed_at)}`
+                : "No completed backups";
+        }
+
+        function renderBackupList(backups) {
+            const list = document.getElementById("backupList");
+            list.replaceChildren();
+            backupsCache = Array.isArray(backups) ? backups : [];
+            if (!backupsCache.length) {
+                const empty = document.createElement("p");
+                empty.className = "backup-empty";
+                empty.textContent = "No completed backups found.";
+                list.append(empty);
+                return;
+            }
+
+            backupsCache.forEach(backup => {
+                const item = document.createElement("article");
+                item.className = "backup-item";
+
+                const details = document.createElement("div");
+                const heading = document.createElement("div");
+                heading.className = "backup-item-heading";
+                const title = document.createElement("h3");
+                title.className = "backup-item-title";
+                title.textContent = backup.label || backup.id;
+                const tag = document.createElement("span");
+                tag.className = `backup-tag${backup.protected ? " protected" : ""}`;
+                tag.textContent = backup.protected ? "Protected" : backupKindLabel(backup);
+                heading.append(title, tag);
+
+                const completed = document.createElement("time");
+                completed.className = "backup-item-meta";
+                completed.dateTime = backup.completed_at || "";
+                completed.title = backup.completed_at || "";
+                completed.textContent = `Completed ${formatBackupDate(backup.completed_at)}`;
+
+                const contents = document.createElement("p");
+                contents.className = "backup-item-contents";
+                const contentItems = Array.isArray(backup.contents) ? backup.contents : [];
+                contents.textContent = contentItems.length
+                    ? contentItems.map(entry => `${minecraftServerLabel(entry.server)} · ${formatBytes(entry.size_bytes)}`).join("  |  ")
+                    : backupKindLabel(backup);
+                details.append(heading, completed, contents);
+
+                const actions = document.createElement("div");
+                actions.className = "backup-item-actions";
+                const size = document.createElement("span");
+                size.className = "backup-item-size";
+                size.textContent = formatBytes(backup.size_bytes);
+                size.title = backup.size_kind === "logical_capacity"
+                    ? "Logical source-volume capacity; EBS snapshot billing is incremental."
+                    : `${Number(backup.size_bytes || 0).toLocaleString()} stored bytes`;
+                const deleteButton = document.createElement("button");
+                deleteButton.className = "mc-btn btn-delete-backup";
+                deleteButton.type = "button";
+                deleteButton.disabled = Boolean(backup.protected);
+                deleteButton.textContent = backup.protected ? "Protected" : "Delete";
+                deleteButton.title = backup.protected
+                    ? "Infrastructure depends on this backup, so it cannot be deleted here."
+                    : `Delete ${backup.label}`;
+                deleteButton.addEventListener("click", () => openDeleteBackupDialog(backup.id));
+                actions.append(size, deleteButton);
+                item.append(details, actions);
+                list.append(item);
+            });
+        }
+
+        async function refreshBackups() {
+            if (backupRefreshInFlight) return backupRefreshInFlight;
+            backupRefreshInFlight = (async () => {
+                try {
+                    const response = await apiFetch("/backups", { method: "GET", cache: "no-store" });
+                    const result = await parseApiResponse(response);
+                    if (!response.ok || !result || typeof result !== "object") {
+                        throw new Error(result?.message || "Unable to load backups.");
+                    }
+                    renderBackupSummary(result.summary);
+                    renderBackupList(result.backups);
+                    renderBackupJob(result.job);
+                    document.getElementById("backupListMessage").textContent =
+                        `${result.summary?.archive_count || 0} S3 archives · ${result.summary?.snapshot_count || 0} server snapshots`;
+                } catch (error) {
+                    console.error("Unable to load backups:", error);
+                    document.getElementById("backupListMessage").textContent = error.message || "Backups are temporarily unavailable.";
+                    if (!backupsCache.length) renderBackupList([]);
+                } finally {
+                    backupRefreshInFlight = null;
+                }
+            })();
+            return backupRefreshInFlight;
+        }
+
+        async function createWorldBackup() {
+            if (backupJobActive) return;
+            if (!confirm("Back up the Forge and Vanilla worlds now? The active server stays online while its world is safely flushed and copied.")) return;
+
+            const button = document.getElementById("createBackupBtn");
+            button.disabled = true;
+            button.textContent = "Queuing backup...";
+            try {
+                const response = await apiFetch("/backups", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: "{}"
+                });
+                const result = await parseApiResponse(response);
+                if (!response.ok) throw new Error(result?.message || "Unable to start the world backup.");
+                renderBackupJob(result.job);
+                showToast(result.message || "World backup queued.");
+                setTimeout(refreshBackups, 1000);
+            } catch (error) {
+                console.error("Unable to start backup:", error);
+                showToast(error.message || "Unable to start the world backup.", "error");
+                button.disabled = false;
+            } finally {
+                button.textContent = "Back Up Worlds Now";
+            }
+        }
+
+        function openDeleteBackupDialog(backupId) {
+            const backup = backupsCache.find(item => item.id === backupId);
+            if (!backup || backup.protected) return;
+            selectedBackupId = backupId;
+            document.getElementById("deleteBackupName").textContent = backup.label;
+            document.getElementById("deleteBackupSize").textContent = formatBytes(backup.size_bytes);
+            const input = document.getElementById("deleteBackupConfirmation");
+            input.value = "";
+            document.getElementById("confirmDeleteBackupBtn").disabled = true;
+            document.getElementById("deleteBackupDialog").showModal();
+            input.focus();
+        }
+
+        function closeDeleteBackupDialog() {
+            selectedBackupId = "";
+            document.getElementById("deleteBackupDialog").close();
+        }
+
+        function validateBackupDeletion() {
+            document.getElementById("confirmDeleteBackupBtn").disabled =
+                document.getElementById("deleteBackupConfirmation").value !== "DELETE";
+        }
+
+        async function deleteSelectedBackup(event) {
+            event.preventDefault();
+            const backupId = selectedBackupId;
+            if (!backupId || document.getElementById("deleteBackupConfirmation").value !== "DELETE") return;
+
+            const button = document.getElementById("confirmDeleteBackupBtn");
+            button.disabled = true;
+            button.textContent = "Deleting...";
+            try {
+                const response = await apiFetch(`/backups/${encodeURIComponent(backupId)}`, {
+                    method: "DELETE",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ confirmation: "DELETE" })
+                });
+                const result = await parseApiResponse(response);
+                if (!response.ok) throw new Error(result?.message || "Unable to delete the backup.");
+                closeDeleteBackupDialog();
+                showToast(result.message || "Backup deleted.");
+                await refreshBackups();
+            } catch (error) {
+                console.error("Unable to delete backup:", error);
+                showToast(error.message || "Unable to delete the backup.", "error");
+            } finally {
+                button.textContent = "Delete Backup";
+                validateBackupDeletion();
+            }
+        }
+
         async function refreshDashboard() {
             if (refreshInFlight) return refreshInFlight;
             refreshInFlight = Promise.all([checkEC2Status(), checkVanillaUpdateStatus()])
@@ -2081,6 +2600,7 @@
         }
 
         async function refreshAllDashboardData() {
+            await refreshBackups();
             return Promise.all([refreshDashboard(), refreshHostMetrics()]);
         }
 
@@ -2166,6 +2686,15 @@
                 <button class="theme-toggle" type="button" onclick="logoutDashboard()">Sign out</button>
             </div>
         </header>
+
+        <nav class="panel-tabs" role="tablist" aria-label="Control panel sections">
+            <button id="serverTab" class="panel-tab" type="button" role="tab" aria-selected="true"
+                aria-controls="serverView" onclick="selectPanelTab('server')">Server</button>
+            <button id="backupsTab" class="panel-tab" type="button" role="tab" aria-selected="false"
+                aria-controls="backupsView" onclick="selectPanelTab('backups')">Backups</button>
+        </nav>
+
+        <div id="serverView" role="tabpanel" aria-labelledby="serverTab">
 
         <section class="mc-panel" aria-labelledby="hostHeading">
             <div class="host-grid">
@@ -2410,12 +2939,76 @@
                 <button class="copy-button" type="button" onclick="copyServerAddress(hardcoreAddress, 'Hardcore')">Copy address</button>
             </div>
         </section>
+        </div>
+
+        <div id="backupsView" role="tabpanel" aria-labelledby="backupsTab" hidden>
+            <section class="mc-panel" aria-labelledby="backupsHeading">
+                <div class="backup-heading">
+                    <div>
+                        <p class="card-kicker">Encrypted S3 · Live-safe copies</p>
+                        <h2 id="backupsHeading">World Backups</h2>
+                        <p class="backup-copy">Create one consistent backup containing both the Forge and Vanilla worlds. Hardcore remains disposable and is intentionally excluded.</p>
+                    </div>
+                    <button id="createBackupBtn" class="mc-btn btn-backup" type="button"
+                        onclick="createWorldBackup()">Back Up Worlds Now</button>
+                </div>
+                <div class="backup-summary-grid" aria-label="Backup totals">
+                    <article class="backup-summary-card">
+                        <span class="label">All backups</span>
+                        <strong id="backupCount" class="backup-summary-value">--</strong>
+                    </article>
+                    <article class="backup-summary-card">
+                        <span class="label">Active S3 storage</span>
+                        <strong id="archiveSize" class="backup-summary-value">--</strong>
+                    </article>
+                    <article class="backup-summary-card">
+                        <span class="label">Snapshot capacity</span>
+                        <strong id="snapshotSize" class="backup-summary-value">--</strong>
+                    </article>
+                </div>
+                <div class="backup-item-heading backup-status-row">
+                    <p id="backupJobStatus" class="status-chip status-running" aria-live="polite">BACKUP: IDLE</p>
+                    <p id="latestBackupTime" class="last-checked">No completed backups</p>
+                </div>
+                <p id="backupJobMessage" class="backup-job-message" aria-live="polite">No world backup is running.</p>
+            </section>
+
+            <section class="mc-panel" aria-labelledby="backupHistoryHeading">
+                <div class="backup-toolbar">
+                    <div>
+                        <p class="card-kicker">Newest first · Local time</p>
+                        <h2 id="backupHistoryHeading">Backup History</h2>
+                        <p id="backupListMessage" class="backup-job-message" aria-live="polite">Loading backups...</p>
+                    </div>
+                    <button class="copy-button" type="button" onclick="refreshBackups()">Refresh backups</button>
+                </div>
+                <div id="backupList" class="backup-list" aria-live="polite">
+                    <p class="backup-empty">Loading completed backups...</p>
+                </div>
+                <p class="backup-size-note">S3 sizes are actual compressed bytes. EBS sizes show protected source-volume capacity; AWS snapshot storage and billing are incremental. Deleted S3 backups remain recoverable through bucket versioning for 30 days.</p>
+            </section>
+        </div>
 
         <footer class="dashboard-footer">
             <p>Remember to stop EC2 when the worlds are quiet.</p>
             <p id="lastChecked" class="last-checked">Waiting for first check</p>
         </footer>
     </main>
+
+    <dialog id="deleteBackupDialog" class="backup-dialog" aria-labelledby="deleteBackupHeading">
+        <form class="backup-dialog-body" method="dialog" onsubmit="deleteSelectedBackup(event)">
+            <p class="card-kicker">Destructive action</p>
+            <h2 id="deleteBackupHeading">Delete backup?</h2>
+            <p class="backup-dialog-copy"><strong id="deleteBackupName"></strong> (<span id="deleteBackupSize"></span>) will be removed from the active backup list. S3 archives remain recoverable for 30 days; EBS snapshot deletion is permanent.</p>
+            <label class="label" for="deleteBackupConfirmation">Type DELETE to confirm</label>
+            <input id="deleteBackupConfirmation" class="backup-confirm-input" type="text" autocomplete="off"
+                oninput="validateBackupDeletion()">
+            <div class="backup-dialog-actions">
+                <button class="mc-btn backup-dialog-cancel" type="button" onclick="closeDeleteBackupDialog()">Cancel</button>
+                <button id="confirmDeleteBackupBtn" class="mc-btn btn-delete-backup" type="submit" disabled>Delete Backup</button>
+            </div>
+        </form>
+    </dialog>
 
     <div id="toastMessage" class="toast-message" role="status" aria-live="polite"></div>
 </body>
